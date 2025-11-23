@@ -908,14 +908,14 @@ Generate a high-quality infographic that looks like it was created with the same
     <div className="workbench-container">
       {/* Left Sidebar: Configuration */}
       <div className="sidebar">
-        <div className="sidebar-header">Configuration</div>
+        <div className="sidebar-header">图表配置</div>
         
         {/* Dataset Section */}
         <div className="config-section">
-          <div className="section-title">Dataset</div>
+          <div className="section-title">数据集选择</div>
           <div className="dataset-control">
             <select value={selectedFile} onChange={handleFileSelect} className="dataset-select">
-              <option value="">Select Dataset...</option>
+              <option value="">选择数据集...</option>
               {csvFiles.map(f => (
                 <option key={f} value={f}>{f.replace('.csv', '')}</option>
               ))}
@@ -927,7 +927,7 @@ Generate a high-quality infographic that looks like it was created with the same
         {/* Types Section */}
         {selectedFile && (
         <div className="config-section">
-          <div className="section-title">Types</div>
+          <div className="section-title">推荐图表类型</div>
           <div className="grid-container">
             {getPagedData(chartTypes, chartTypePage, CHART_TYPES_PER_PAGE).map(type => (
                <div 
@@ -959,7 +959,7 @@ Generate a high-quality infographic that looks like it was created with the same
         {/* Variation Section */}
         {selectedChartType && (
         <div className="config-section">
-          <div className="section-title">Variation</div>
+          <div className="section-title">推荐图表变体</div>
           <div className="grid-container">
             {getPagedData(variations, variationPage, VARIATIONS_PER_PAGE).map(v => (
                <div 
@@ -991,7 +991,7 @@ Generate a high-quality infographic that looks like it was created with the same
         {/* Reference Section */}
         {selectedVariation && references.length > 0 && (
         <div className="config-section">
-          <div className="section-title">Reference Style</div>
+          <div className="section-title">推荐参考图片</div>
           <div className="grid-container">
             {getPagedData(references, referencePage, REFERENCES_PER_PAGE).map(ref => (
                <div 
@@ -1020,7 +1020,7 @@ Generate a high-quality infographic that looks like it was created with the same
 
           {selectedReference && (
               <div className="selected-reference-card" style={{marginTop: '15px', border: '1px solid #e0e0e0', padding: '10px', borderRadius: '6px', position: 'relative', backgroundColor: '#fff'}}>
-                  <div style={{fontSize: '12px', marginBottom: '8px', fontWeight: '600', color: '#333'}}>Example Selected</div>
+                  <div style={{fontSize: '1rem', marginBottom: '8px', fontWeight: '600', color: '#333'}}>当前参考图片</div>
                   <button 
                     onClick={(e) => { e.stopPropagation(); setSelectedReference(''); }}
                     style={{position: 'absolute', top: '5px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#666', padding: 0, lineHeight: 1}}
@@ -1040,14 +1040,14 @@ Generate a high-quality infographic that looks like it was created with the same
         {/* Assets Section */}
         {selectedVariation && (titleImage || selectedPictograms.length > 0) && (
         <div className="config-section">
-            <div className="section-title">Generated Assets</div>
+            <div className="section-title">元素生成结果</div>
             
             {/* Title Selection */}
             {titleOptions.length > 0 ? (
                 <div className="asset-group" style={{marginBottom: '15px'}}>
                     <div className="asset-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                        <label style={{fontSize: '12px', fontWeight: '600', color: '#666'}}>Title</label>
-                        <button onClick={regenerateTitle} style={{fontSize: '10px', padding: '2px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer'}}>Regenerate</button>
+                        <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>标题</label>
+                        <button onClick={regenerateTitle} style={{fontSize: '0.875rem', padding: '2px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer'}}>重新生成</button>
                     </div>
                     <div className="asset-options-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px'}}>
                         {titleOptions.map(opt => (
@@ -1082,7 +1082,7 @@ Generate a high-quality infographic that looks like it was created with the same
                     <div className="asset-item">
                         <div>
                             <label>Title</label>
-                            <button onClick={regenerateTitle}>Regenerate</button>
+                            <button onClick={regenerateTitle}>重新生成</button>
                         </div>
                         <img src={`/currentfilepath/${titleImage}?t=${Date.now()}`} alt="Title" />
                     </div>
@@ -1093,8 +1093,8 @@ Generate a high-quality infographic that looks like it was created with the same
             {pictogramOptions.length > 0 ? (
                 <div className="asset-group">
                     <div className="asset-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                        <label style={{fontSize: '12px', fontWeight: '600', color: '#666'}}>Pictogram (Multi-select)</label>
-                        <button onClick={regeneratePictogram} style={{fontSize: '10px', padding: '2px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer'}}>Regenerate</button>
+                        <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>图像（可多选）</label>
+                        <button onClick={regeneratePictogram} style={{fontSize: '0.875rem', padding: '2px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer'}}>重新生成</button>
                     </div>
                     <div className="asset-options-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px'}}>
                         {pictogramOptions.map(opt => (
@@ -1141,7 +1141,7 @@ Generate a high-quality infographic that looks like it was created with the same
                     <div className="asset-item">
                         <div>
                             <label>Pictogram</label>
-                            <button onClick={regeneratePictogram}>Regenerate</button>
+                            <button onClick={regeneratePictogram}>重新生成</button>
                         </div>
                         <img src={`/currentfilepath/${selectedPictograms[0]}?t=${Date.now()}`} alt="Pictogram" />
                     </div>
@@ -1153,21 +1153,21 @@ Generate a high-quality infographic that looks like it was created with the same
 
       {/* Main Preview Area */}
       <div className="main-preview">
-        <div className="preview-header">预览图</div>
+        <div className="preview-header">可编辑画布</div>
         <div className="canvas-wrapper">
             <canvas id="workbenchCanvas" />
         </div>
         
         {/* Edit Button */}
         <button className="edit-fab" onClick={() => setShowEditPanel(!showEditPanel)}>
-            Edit
+            进一步编辑
         </button>
 
         {/* Edit Panel (Floating) */}
         {showEditPanel && (
             <div className="edit-panel">
                 <div className="edit-panel-header">
-                    <span>✏️ 编辑与精修</span>
+                    <span>✏️ 进一步编辑</span>
                     <button className="close-btn" onClick={() => { setShowEditPanel(false); }}>×</button>
                 </div>
                 

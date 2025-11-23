@@ -61,7 +61,7 @@ body {
 }
 
 .section-title {
-  font-size: 0.75rem;
+  font-size: 1rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -169,6 +169,7 @@ body {
   cursor: pointer;
   color: var(--text-muted);
   transition: all 0.2s;
+  font-size: 1rem;
 }
 
 .pagination button:hover:not(:disabled) {
@@ -182,7 +183,7 @@ body {
 }
 
 .pagination span {
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: var(--text-muted);
 }
 
@@ -426,13 +427,12 @@ body {
 
 .edit-row label {
   display: block;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
   margin-bottom: 10px;
   color: var(--text-main);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-size: 0.75rem;
 }
 
 .color-options {
@@ -654,7 +654,7 @@ body {
   justify-content: center;
   align-items: center;
   gap: 10px;
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: #666;
 }
 
@@ -664,6 +664,7 @@ body {
   cursor: pointer;
   font-weight: bold;
   color: #667eea;
+  font-size: 1rem;
 }
 
 .pagination button:disabled {
