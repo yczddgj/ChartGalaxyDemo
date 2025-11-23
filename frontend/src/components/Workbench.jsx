@@ -10,15 +10,17 @@ function Workbench() {
   
   // --- State: Chart Types ---
   const [chartTypes, setChartTypes] = useState([]);
+  const [totalChartTypes, setTotalChartTypes] = useState(0);
   const [selectedChartType, setSelectedChartType] = useState('');
   const [chartTypePage, setChartTypePage] = useState(0);
-  const CHART_TYPES_PER_PAGE = 6; // Adjust based on layout
+  const CHART_TYPES_PER_PAGE = 3; // Adjust based on layout
 
   // --- State: Variations ---
   const [variations, setVariations] = useState([]);
+  const [totalVariations, setTotalVariations] = useState(0);
   const [selectedVariation, setSelectedVariation] = useState('');
   const [variationPage, setVariationPage] = useState(0);
-  const VARIATIONS_PER_PAGE = 6;
+  const VARIATIONS_PER_PAGE = 3;
 
   // --- State: Editor/Preview ---
   const canvasRef = useRef(null);
@@ -61,6 +63,9 @@ Generate a high-quality infographic that looks like it was created with the same
 
   // --- State: References & Assets ---
   const [references, setReferences] = useState([]);
+  const [totalReferences, setTotalReferences] = useState(0);
+  const [referencePage, setReferencePage] = useState(0);
+  const REFERENCES_PER_PAGE = 3;
   const [selectedReference, setSelectedReference] = useState('');
   const [titleImage, setTitleImage] = useState('');
   const [selectedPictograms, setSelectedPictograms] = useState([]);
@@ -124,6 +129,28 @@ Generate a high-quality infographic that looks like it was created with the same
   // --- Logic: Data Selection ---
   const handleFileSelect = async (e) => {
     const file = e.target.value;
+    
+    // Reset downstream state
+    setSelectedChartType('');
+    setChartTypes([]);
+    setTotalChartTypes(0);
+    setChartTypePage(0);
+
+    setSelectedVariation('');
+    setVariations([]);
+    setTotalVariations(0);
+    setVariationPage(0);
+
+    setSelectedReference('');
+    setReferences([]);
+    setTotalReferences(0);
+    setReferencePage(0);
+
+    setTitleImage('');
+    setSelectedPictograms([]);
+    setTitleOptions([]);
+    setPictogramOptions([]);
+
     setSelectedFile(file);
     if (file) {
       setLoading(true);
@@ -167,47 +194,67 @@ Generate a high-quality infographic that looks like it was created with the same
   // --- Logic: Chart Types ---
   const fetchChartTypes = async () => {
     setLoading(true);
-    setLoadingText('Generating chart type previews...');
+    setLoadingText('Loading chart types...');
     try {
       const res = await axios.get('/api/chart_types');
-      // Trigger preview generation
-      await axios.get('/api/chart_types/generate_previews');
-      
-      // Wait for completion before setting state
-      pollStatus((statusData) => {
-          setChartTypes(res.data.chart_types);
-          setPreviewTimestamp(Date.now());
-      }, 'chart_type_preview');
+      setTotalChartTypes(res.data.total);
+      setChartTypes(res.data.chart_types);
+      setLoading(false);
     } catch (err) {
       console.error(err);
       setLoading(false);
     }
   };
 
-  const loadMoreChartTypes = async () => {
+  const loadMoreChartTypes = async (onSuccess) => {
     setLoading(true);
     setLoadingText('Loading more chart types...');
     try {
         const res = await axios.get('/api/chart_types/next');
         if (res.data.chart_types && res.data.chart_types.length > 0) {
-            await axios.get('/api/chart_types/generate_previews');
-            pollStatus(() => {
-                setChartTypes(prev => {
-                    const newItems = res.data.chart_types.filter(item => !prev.some(p => p.type === item.type));
-                    return [...prev, ...newItems];
-                });
-                setPreviewTimestamp(Date.now());
-            }, 'chart_type_preview');
-        } else {
-            setLoading(false);
+            setChartTypes(prev => {
+                const newItems = res.data.chart_types.filter(item => !prev.some(p => p.type === item.type));
+                return [...prev, ...newItems];
+            });
+            if (onSuccess) onSuccess();
         }
+        setLoading(false);
     } catch (err) {
         console.error(err);
         setLoading(false);
     }
   };
 
+  const handleChartTypeNext = async () => {
+      const maxLoadedPage = Math.ceil(chartTypes.length / CHART_TYPES_PER_PAGE) - 1;
+      if (chartTypePage < maxLoadedPage) {
+          // Data already loaded
+          setChartTypePage(p => p + 1);
+      } else {
+          // Need to load more
+          await loadMoreChartTypes(() => {
+              setChartTypePage(p => p + 1);
+          });
+      }
+  };
+
   const handleChartTypeSelect = async (type) => {
+    // Reset downstream state
+    setSelectedVariation('');
+    setVariations([]);
+    setTotalVariations(0);
+    setVariationPage(0);
+
+    setSelectedReference('');
+    setReferences([]);
+    setTotalReferences(0);
+    setReferencePage(0);
+
+    setTitleImage('');
+    setSelectedPictograms([]);
+    setTitleOptions([]);
+    setPictogramOptions([]);
+
     setSelectedChartType(type);
     setLoading(true);
     setLoadingText('Loading variations...');
@@ -226,12 +273,14 @@ Generate a high-quality infographic that looks like it was created with the same
     setLoadingText('Generating variation previews...');
     try {
       const res = await axios.get('/api/variations');
+      setTotalVariations(res.data.total);
       // Trigger preview generation
       await axios.get('/api/variations/generate_previews');
       
       // Wait for completion before setting state
       pollStatus((statusData) => {
           // Filter out 'plain' variations as per requirements
+          // Note: Backend now filters 'plain' too, but keeping this safe
           const filtered = (res.data.variations || []).filter(v => !v.name.toLowerCase().includes('plain'));
           setVariations(filtered);
           setPreviewTimestamp(Date.now());
@@ -242,7 +291,7 @@ Generate a high-quality infographic that looks like it was created with the same
     }
   };
 
-  const loadMoreVariations = async () => {
+  const loadMoreVariations = async (onSuccess) => {
     setLoading(true);
     setLoadingText('Loading more variations...');
     try {
@@ -257,6 +306,7 @@ Generate a high-quality infographic that looks like it was created with the same
                     return [...prev, ...newItems];
                 });
                 setPreviewTimestamp(Date.now());
+                if (onSuccess) onSuccess();
             }, 'variation_preview');
         } else {
             setLoading(false);
@@ -267,46 +317,67 @@ Generate a high-quality infographic that looks like it was created with the same
     }
   };
 
+  const handleVariationNext = async () => {
+      const maxLoadedPage = Math.ceil(variations.length / VARIATIONS_PER_PAGE) - 1;
+      if (variationPage < maxLoadedPage) {
+          // Data already loaded
+          setVariationPage(p => p + 1);
+      } else {
+          // Need to load more
+          await loadMoreVariations(() => {
+              setVariationPage(p => p + 1);
+          });
+      }
+  };
+
   const handleVariationSelect = async (variationName) => {
+    // Reset downstream state
+    setSelectedReference('');
+    setReferences([]);
+    setTotalReferences(0);
+    setReferencePage(0);
+
+    setTitleImage('');
+    setSelectedPictograms([]);
+    setTitleOptions([]);
+    setPictogramOptions([]);
+
     setSelectedVariation(variationName);
     // Load into Canvas directly from the generated preview (use PNG)
     loadChartToCanvas(variationName, `/currentfilepath/variation_${variationName}.png`);
-    // Fetch references for the next step
-    fetchReferences();
+    // Start asset generation
+    generateTitle();
   };
 
   // --- Logic: References & Assets ---
   const fetchReferences = async () => {
     try {
       const res = await axios.get('/api/references');
-      const { main_image, random_images } = res.data;
+      const { main_image, random_images, total } = res.data;
       const allRefs = [main_image, ...(random_images || [])].filter(Boolean);
       setReferences(allRefs);
+      setTotalReferences(total);
     } catch (err) {
       console.error(err);
     }
   };
 
   const handleReferenceSelect = async (refName) => {
+    // Reset downstream state
+    // Assets are already generated, do not reset
+
     setSelectedReference(refName);
-    setLoading(true);
-    setLoadingText('Extracting style & Generating assets...');
+    // Just trigger extraction in background, do not block UI or update canvas
     try {
       const dataName = selectedFile.replace('.csv', '');
       // 1. Extract Layout/Style
-      await axios.get(`/api/start_layout_extraction/${refName}/${dataName}`);
-      
-      pollStatus(async () => {
-          // 2. Generate Title
-          await generateTitle();
-      }, 'layout_extraction');
+      axios.get(`/api/start_layout_extraction/${refName}/${dataName}`);
     } catch (err) {
       console.error(err);
-      setLoading(false);
     }
   };
 
-  const loadMoreReferences = async () => {
+  const loadMoreReferencesData = async (onSuccess) => {
     setLoading(true);
     setLoadingText('Loading more references...');
     try {
@@ -319,6 +390,7 @@ Generate a high-quality infographic that looks like it was created with the same
                 const newItems = newRefs.filter(item => !prev.includes(item));
                 return [...prev, ...newItems];
             });
+            if (onSuccess) onSuccess();
         } else {
             // No more items
         }
@@ -327,6 +399,19 @@ Generate a high-quality infographic that looks like it was created with the same
         console.error(err);
         setLoading(false);
     }
+  };
+
+  const handleReferenceNext = async () => {
+      const maxLoadedPage = Math.ceil(references.length / REFERENCES_PER_PAGE) - 1;
+      if (referencePage < maxLoadedPage) {
+          // Data already loaded
+          setReferencePage(p => p + 1);
+      } else {
+          // Need to load more
+          await loadMoreReferencesData(() => {
+              setReferencePage(p => p + 1);
+          });
+      }
   };
 
   const generateTitle = async () => {
@@ -383,6 +468,9 @@ Generate a high-quality infographic that looks like it was created with the same
               const newPictograms = [options[0]];
               setSelectedPictograms(newPictograms);
               setLoading(false);
+              
+              // Fetch references after assets are generated
+              fetchReferences();
               
               // Force update canvas with new assets
               // Use the passed title image if available (since state update might be pending)
@@ -555,16 +643,17 @@ Generate a high-quality infographic that looks like it was created with the same
           // Determine layout options
           let chartOptions, titleOptions, imageOptions;
 
-          // Check if we should use saved positions
+          // Check if we should use saved positions (highest priority)
           if (preservePositions && currentPositions.chart) {
               // Use saved positions for chart
               chartOptions = {
                   ...currentPositions.chart,
-                  maxWidth: canvas.width * 0.8,
-                  maxHeight: canvas.height * 0.8
+                  maxWidth: canvas.width * 0.9,
+                  maxHeight: canvas.height * 0.7
               };
-          } else if (layout && layout.chart && layout.title && layout.image) {
-              // Use layout from backend
+          } else if (layout && layout.chart) {
+              // Use layout from backend (from reference)
+              console.log('Using reference layout:', layout);
               chartOptions = {
                   left: layout.chart.x * canvas.width,
                   top: layout.chart.y * canvas.height,
@@ -576,19 +665,19 @@ Generate a high-quality infographic that looks like it was created with the same
           } else {
               // Default layout
               chartOptions = {
-                  left: canvas.width / 2,
-                  top: canvas.height / 2,
-                  originX: 'center',
-                  originY: 'center',
-                  maxWidth: canvas.width * 0.8,
-                  maxHeight: canvas.height * 0.8
+                  maxWidth: canvas.width * 0.9,
+                  maxHeight: canvas.height * 0.7,
+                  left: canvas.width * 0.05,
+                  top: canvas.height * 0.15,
+                  originX: 'left',
+                  originY: 'top'
               };
           }
 
           // Title options
           if (preservePositions && currentPositions.title) {
               titleOptions = currentPositions.title;
-          } else if (layout && layout.chart && layout.title && layout.image) {
+          } else if (layout && layout.title) {
               titleOptions = {
                   left: layout.title.x * canvas.width,
                   top: layout.title.y * canvas.height,
@@ -599,17 +688,17 @@ Generate a high-quality infographic that looks like it was created with the same
               };
           } else {
               titleOptions = {
-                  left: canvas.width / 2,
-                  top: 50,
-                  originX: 'center',
-                  originY: 'center',
-                  scaleX: 0.5,
-                  scaleY: 0.5
+                  maxWidth: 400,
+                  maxHeight: 150,
+                  left: 20,
+                  top: 20,
+                  originX: 'left',
+                  originY: 'top'
               };
           }
 
           // Image/Pictogram options
-          if (layout && layout.chart && layout.title && layout.image) {
+          if (layout && layout.image) {
               imageOptions = {
                   left: layout.image.x * canvas.width,
                   top: layout.image.y * canvas.height,
@@ -620,12 +709,12 @@ Generate a high-quality infographic that looks like it was created with the same
               };
           } else {
               imageOptions = {
-                  left: 100,
-                  top: 100,
-                  originX: 'center',
-                  originY: 'center',
-                  scaleX: 0.3,
-                  scaleY: 0.3
+                  maxWidth: 200,
+                  maxHeight: 200,
+                  left: canvas.width - 220,
+                  top: canvas.height - 220,
+                  originX: 'left',
+                  originY: 'top'
               };
           }
 
@@ -811,6 +900,7 @@ Generate a high-quality infographic that looks like it was created with the same
         </div>
 
         {/* Types Section */}
+        {selectedFile && (
         <div className="config-section">
           <div className="section-title">Types</div>
           <div className="grid-container">
@@ -821,7 +911,7 @@ Generate a high-quality infographic that looks like it was created with the same
                  onClick={() => handleChartTypeSelect(type.type)}
                >
                  <img 
-                    src={`/currentfilepath/charttype_${type.type.replace(/ /g, '_')}.svg?t=${previewTimestamp}`}
+                    src={type.image_url || `/static/chart_types/${type.type}.png`}
                     alt={type.type}
                     onError={(e) => {
                         e.target.onerror = null; 
@@ -835,15 +925,14 @@ Generate a high-quality infographic that looks like it was created with the same
           {/* Pagination */}
           <div className="pagination">
              <button disabled={chartTypePage === 0} onClick={() => setChartTypePage(p => p - 1)}>&lt;</button>
-             <span>{chartTypePage + 1} / {totalPages(chartTypes, CHART_TYPES_PER_PAGE) || 1}</span>
-             <button disabled={chartTypePage >= totalPages(chartTypes, CHART_TYPES_PER_PAGE) - 1} onClick={() => setChartTypePage(p => p + 1)}>&gt;</button>
-          </div>
-          <div className="load-more-container">
-            <button className="load-more-btn" onClick={loadMoreChartTypes}>Load More</button>
+             <span>{chartTypePage + 1} / {Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) || 1}</span>
+             <button disabled={chartTypePage >= Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) - 1} onClick={handleChartTypeNext}>&gt;</button>
           </div>
         </div>
+        )}
 
         {/* Variation Section */}
+        {selectedChartType && (
         <div className="config-section">
           <div className="section-title">Variation</div>
           <div className="grid-container">
@@ -868,62 +957,14 @@ Generate a high-quality infographic that looks like it was created with the same
           {/* Pagination */}
           <div className="pagination">
              <button disabled={variationPage === 0} onClick={() => setVariationPage(p => p - 1)}>&lt;</button>
-             <span>{variationPage + 1} / {totalPages(variations, VARIATIONS_PER_PAGE) || 1}</span>
-             <button disabled={variationPage >= totalPages(variations, VARIATIONS_PER_PAGE) - 1} onClick={() => setVariationPage(p => p + 1)}>&gt;</button>
+             <span>{variationPage + 1} / {Math.ceil(totalVariations / VARIATIONS_PER_PAGE) || 1}</span>
+             <button disabled={variationPage >= Math.ceil(totalVariations / VARIATIONS_PER_PAGE) - 1} onClick={handleVariationNext}>&gt;</button>
           </div>
-          <div className="load-more-container">
-            <button className="load-more-btn" onClick={loadMoreVariations}>Load More</button>
-          </div>
-        </div>
-
-        {/* Reference Section */}
-        {references.length > 0 && (
-        <div className="config-section">
-          <div className="section-title">Reference Style</div>
-          <div className="grid-container">
-            {references.map(ref => (
-               <div 
-                 key={ref} 
-                 className={`grid-item ${selectedReference === ref ? 'selected' : ''}`}
-                 onClick={() => handleReferenceSelect(ref)}
-               >
-                 <img 
-                    src={`/infographics/${ref}`} 
-                    alt={ref}
-                    onError={(e) => {
-                        e.target.onerror = null;
-                        // Try static path if infographics fails
-                        e.target.src = `/static/images/references/${ref}`; 
-                    }}
-                 />
-               </div>
-            ))}
-          </div>
-          <div className="load-more-container">
-            <button className="load-more-btn" onClick={loadMoreReferences}>Load More</button>
-          </div>
-
-          {selectedReference && (
-              <div className="selected-reference-card" style={{marginTop: '15px', border: '1px solid #e0e0e0', padding: '10px', borderRadius: '6px', position: 'relative', backgroundColor: '#fff'}}>
-                  <div style={{fontSize: '12px', marginBottom: '8px', fontWeight: '600', color: '#333'}}>Example Selected</div>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setSelectedReference(''); }}
-                    style={{position: 'absolute', top: '5px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#666', padding: 0, lineHeight: 1}}
-                    title="Remove selection"
-                  >×</button>
-                  <img 
-                    src={`/infographics/${selectedReference}`} 
-                    alt="Selected" 
-                    style={{width: '100%', height: 'auto', borderRadius: '4px', border: '1px solid #eee'}}
-                    onError={(e) => { e.target.src = `/static/images/references/${selectedReference}`; }}
-                  />
-              </div>
-          )}
         </div>
         )}
 
         {/* Assets Section */}
-        {(titleImage || selectedPictograms.length > 0) && (
+        {selectedVariation && (titleImage || selectedPictograms.length > 0) && (
         <div className="config-section">
             <div className="section-title">Generated Assets</div>
             
@@ -945,7 +986,7 @@ Generate a high-quality infographic that looks like it was created with the same
                                     borderRadius: '4px',
                                     overflow: 'hidden',
                                     cursor: 'pointer',
-                                    height: '40px',
+                                    aspectRatio: '1 / 1',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -1000,7 +1041,7 @@ Generate a high-quality infographic that looks like it was created with the same
                                     borderRadius: '4px',
                                     overflow: 'hidden',
                                     cursor: 'pointer',
-                                    height: '60px',
+                                    aspectRatio: '1 / 1',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -1032,6 +1073,55 @@ Generate a high-quality infographic that looks like it was created with the same
                     </div>
                 )
             )}
+        </div>
+        )}
+
+        {/* Reference Section */}
+        {selectedVariation && references.length > 0 && (
+        <div className="config-section">
+          <div className="section-title">Reference Style</div>
+          <div className="grid-container">
+            {getPagedData(references, referencePage, REFERENCES_PER_PAGE).map(ref => (
+               <div 
+                 key={ref} 
+                 className={`grid-item ${selectedReference === ref ? 'selected' : ''}`}
+                 onClick={() => handleReferenceSelect(ref)}
+               >
+                 <img 
+                    src={`/infographics/${ref}`} 
+                    alt={ref}
+                    onError={(e) => {
+                        e.target.onerror = null;
+                        // Try static path if infographics fails
+                        e.target.src = `/static/images/references/${ref}`; 
+                    }}
+                 />
+               </div>
+            ))}
+          </div>
+          {/* Pagination */}
+          <div className="pagination">
+             <button disabled={referencePage === 0} onClick={() => setReferencePage(p => p - 1)}>&lt;</button>
+             <span>{referencePage + 1} / {Math.ceil(totalReferences / REFERENCES_PER_PAGE) || 1}</span>
+             <button disabled={referencePage >= Math.ceil(totalReferences / REFERENCES_PER_PAGE) - 1} onClick={handleReferenceNext}>&gt;</button>
+          </div>
+
+          {selectedReference && (
+              <div className="selected-reference-card" style={{marginTop: '15px', border: '1px solid #e0e0e0', padding: '10px', borderRadius: '6px', position: 'relative', backgroundColor: '#fff'}}>
+                  <div style={{fontSize: '12px', marginBottom: '8px', fontWeight: '600', color: '#333'}}>Example Selected</div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setSelectedReference(''); }}
+                    style={{position: 'absolute', top: '5px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#666', padding: 0, lineHeight: 1}}
+                    title="Remove selection"
+                  >×</button>
+                  <img 
+                    src={`/infographics/${selectedReference}`} 
+                    alt="Selected" 
+                    style={{width: '50%', height: 'auto', objectFit: 'contain', borderRadius: '4px', border: '1px solid #eee', display: 'block', margin: '0 auto'}}
+                    onError={(e) => { e.target.src = `/static/images/references/${selectedReference}`; }}
+                  />
+              </div>
+          )}
         </div>
         )}
       </div>

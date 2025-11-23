@@ -117,7 +117,7 @@ def refine_with_gemini(reference_image_path: str, current_image_path: str, outpu
 1. **Reference Image**: An infographic with a specific visual style (colors, layout, typography, design elements)
 2. **Current Image**: A newly generated infographic that needs to be refined
 
-Your task is to regenerate the Current Image by applying the visual style from the Reference Image, while preserving all the data, content, and information from the Current Image.
+Your task is to refine the Current Image by applying the visual style from the Reference Image, while preserving all the data, content, and information from the Current Image.
 
 Specifically:
 - Match the color palette from the Reference Image
