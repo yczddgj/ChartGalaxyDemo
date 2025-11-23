@@ -14,14 +14,14 @@ from io import BytesIO
 API_KEY = "sk-ho2TtXpXZCd50j5q3d4f29D8Cd6246B28212028a0aF69361"
 BASE_URL = "https://aihubmix.com/v1"
 
-def svg_to_png(svg_content: str, output_path: str, background_color: str = "#f5f3ef") -> bool:
+def svg_to_png(svg_content: str, output_path: str, background_color: str = None) -> bool:
     """
     将 SVG 内容转换为 PNG 文件
 
     Args:
         svg_content: SVG 文件内容（字符串）
         output_path: 输出 PNG 文件路径
-        background_color: 背景颜色（hex 格式）
+        background_color: 背景颜色（hex 格式），None 表示透明背景
 
     Returns:
         bool: 转换是否成功
@@ -31,10 +31,11 @@ def svg_to_png(svg_content: str, output_path: str, background_color: str = "#f5f
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         # 使用 cairosvg 将 SVG 转换为 PNG
+        # 如果 background_color 为 None，则使用透明背景
         cairosvg.svg2png(
             bytestring=svg_content.encode('utf-8'),
             write_to=output_path,
-            background_color=background_color
+            background_color=background_color  # None = transparent
         )
 
         print(f"SVG 转 PNG 成功: {output_path}")

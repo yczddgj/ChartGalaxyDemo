@@ -63,8 +63,8 @@ def conduct_layout_extraction(reference, datafile, generation_status):
     generation_status['completed'] = False
 
     try:
-        # Step 1: 抽取参考风格（颜色）
-        generation_status['progress'] = '抽取参考信息图表风格...'
+        # Step 1: 抽取参考信息图表布局
+        generation_status['progress'] = '抽取参考信息图表布局...'
         generation_status['style']["colors"], generation_status['style']["bg_color"] = extract_main_color(reference)
         print("提取的颜色: %s %s", generation_status['style']["colors"], generation_status['style']["bg_color"])
 

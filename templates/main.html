@@ -345,10 +345,10 @@
                 <div class="control-group">
                     <label class="form-label">画布比例</label>
                     <select class="form-select" id="aspectRatioSelector">
-                        <option value="4:3" selected>4:3 (横向)</option>
+                        <option value="4:3">4:3 (横向)</option>
                         <option value="16:9">16:9 (宽屏)</option>
                         <option value="1:1">1:1 (正方形)</option>
-                        <option value="3:4">3:4 (纵向)</option>
+                        <option value="3:4" selected>3:4 (纵向)</option>
                         <option value="9:16">9:16 (手机竖屏)</option>
                         <option value="2:1">2:1 (超宽)</option>
                         <option value="1:2">1:2 (超高)</option>
@@ -423,10 +423,10 @@ const aspectRatios = {
     '4:3': { width: 800, height: 600 },
     '16:9': { width: 960, height: 540 },
     '1:1': { width: 700, height: 700 },
-    '3:4': { width: 600, height: 800 },
-    '9:16': { width: 450, height: 800 },
+    '3:4': { width: 900, height: 1200 },
+    '9:16': { width: 675, height: 1200 },
     '2:1': { width: 1000, height: 500 },
-    '1:2': { width: 400, height: 800 }
+    '1:2': { width: 600, height: 1200 }
 };
 
 // 初始化 Fabric Canvas
@@ -1100,8 +1100,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const initialTitle = "{{ title | safe }}";
     const initialPictogram = "{{ pictogram | safe }}";
 
-    // 初始化画布
-    const config = aspectRatios['4:3'];
+    // 初始化画布（默认使用 3:4 比例）
+    const config = aspectRatios['3:4'];
     initCanvas(config.width, config.height);
 
     // 初始化撤销/重做按钮状态

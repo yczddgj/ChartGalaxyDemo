@@ -158,9 +158,9 @@ def generate_chart():
         else:
             bg_hex = "#f5f3ef"
 
-        # 将 SVG 转换为 PNG
+        # 将 SVG 转换为 PNG，使用透明背景
         png_output_path = output_path.replace('.svg', '.png')
-        svg_to_png(svg, png_output_path, background_color=bg_hex)
+        svg_to_png(svg, png_output_path, background_color=None)
 
         # 将 PNG 转换为 base64
         chart_base64 = image_to_base64(png_output_path)
