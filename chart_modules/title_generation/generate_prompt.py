@@ -1,9 +1,18 @@
 from openai import OpenAI
+import os
 
-def get_prompt( title, 
-                bg_color, 
-                prompt_path = 'prompts/generate_prompt_gpt_en.md', 
-                save_path = 'prompts/generated_output.md'):
+# 获取当前文件所在目录的绝对路径
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+
+def get_prompt( title,
+                bg_color,
+                prompt_path = None,
+                save_path = None):
+    # 使用绝对路径
+    if prompt_path is None:
+        prompt_path = os.path.join(_current_dir, 'prompts/generate_prompt_gpt_en.md')
+    if save_path is None:
+        save_path = os.path.join(_current_dir, 'prompts/generated_output.md')
     with open(prompt_path, 'r', encoding='utf-8') as file:
         generate_prompt = file.read()
     generate_prompt = generate_prompt.replace("{title}", title)

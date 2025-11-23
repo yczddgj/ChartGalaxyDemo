@@ -111,7 +111,7 @@ def analyze_templates(templates: Dict) -> Tuple[int, Dict[str, str], int]:
     return template_count, template_requirements
 
 # block_list = ["multiple_line_graph_06", "layered_area_chart_02", "multiple_area_chart_01", "stacked_area_chart_01", "stacked_area_chart_03"]
-block_list = []
+block_list = ["horizontal_group_bar_chart_13", "horizontal_group_bar_chart_06"]
 
 def check_field_color_compatibility(requirements: Dict, data: Dict) -> bool:
     """Check if the field color is compatible with the template"""
@@ -318,6 +318,23 @@ def select_template(compatible_templates: List[str]) -> Tuple[str, str, str]:
     同level内按照具体使用次数加权随机选择
     使用文件锁确保多线程安全
     """
+    # 过滤掉block_list中的模板
+    filtered_templates = []
+    for template_info in compatible_templates:
+        template_key = template_info[0]
+        _, chart_type, chart_name = template_key.split('/')
+        if chart_name not in block_list:
+            filtered_templates.append(template_info)
+        else:
+            print(f"[过滤] 跳过被禁用的模板: {chart_name}")
+
+    # 如果所有模板都被过滤了，返回None表示无可用模板
+    if not filtered_templates:
+        print(f"[警告] 所有模板都在block_list中，无可用模板")
+        return None, None, None, None
+
+    compatible_templates = filtered_templates
+
     # 读取variation.json，使用文件锁
     try:
         with open('variation.json', 'r') as f:

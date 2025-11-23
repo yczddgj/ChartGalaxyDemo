@@ -14,42 +14,28 @@ from io import BytesIO
 from pathlib import Path
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import hashlib
 
 sys.path.append(str(Path(__file__).parent))
+# 添加标题生成模块的路径
+sys.path.append(str(Path(__file__).parent.parent.parent / "title_generation"))
+
+# ============ 测试模式开关 ============
+# 设置为 True 时，不会生成新图片，直接使用固定路径的测试图片
+TEST_MODE = False
+# 测试图片固定路径
+TEST_TITLE_IMAGE = str(Path(__file__).parent / "test_images" / "test_title.png")
+TEST_PICTOGRAM_IMAGE = str(Path(__file__).parent / "test_images" / "test_pictogram.png")
+# =====================================
 
 API_KEY = "sk-ho2TtXpXZCd50j5q3d4f29D8Cd6246B28212028a0aF69361" # from WangZheng
 BASE_URL = "https://aihubmix.com/v1"
-
-style_options = [
-    "minimalist flat design",
-    "soft pastel vector style",
-    "modern geometric illustration",
-    "isometric semi-realistic style",
-    "conceptual abstract imagery",
-    "retro-inspired muted vector art",
-    "futuristic holographic-style vector",
-    "clean professional vector design"
-]
-
-subject_options = [
-    "abstract geometric shapes",
-    "organic flowing curves",
-    "interconnected network nodes",
-    "symbolic human silhouettes (no facial features)",
-    "stylized natural elements",
-    "data-inspired 3D blocks",
-    "layered conceptual shapes",
-    "minimalistic object icons",
-    "symbolic spherical representations",
-    "abstract landscape forms",
-    "dynamic arrow-like motion elements"
-]
 
 class InfographicImageGenerator:
     def __init__(self):
         """
         Initialize image generator
-        
+
         Args:
             api_key: OpenAI API key
             base_url: Optional API base URL for custom endpoint
@@ -61,7 +47,14 @@ class InfographicImageGenerator:
         self.processed_data_dir = "processed_data"
         self.output_dir = "generated_images"
         self.prompts_dir = "."
-        
+
+        # 缓存目录 - 放在 buffer 文件夹下，可跨任务共享
+        self.cache_dir = "buffer/generation_cache"
+        self.title_cache_dir = os.path.join(self.cache_dir, "titles")
+        self.pictogram_cache_dir = os.path.join(self.cache_dir, "pictograms")
+        self.title_cache_file = os.path.join(self.cache_dir, "title_cache.json")
+        self.pictogram_cache_file = os.path.join(self.cache_dir, "pictogram_cache.json")
+
         # Create output directories
         os.makedirs(self.output_dir, exist_ok=True)
         os.makedirs(f"{self.output_dir}/titles", exist_ok=True)
@@ -69,6 +62,48 @@ class InfographicImageGenerator:
         # Coming Soon directories
         os.makedirs(f"{self.output_dir}/chart_variations", exist_ok=True)
         os.makedirs(f"{self.output_dir}/final_infographics", exist_ok=True)
+
+        # Create cache directories
+        os.makedirs(self.cache_dir, exist_ok=True)
+        os.makedirs(self.title_cache_dir, exist_ok=True)
+        os.makedirs(self.pictogram_cache_dir, exist_ok=True)
+
+        # Load cache
+        self.title_cache = self._load_cache(self.title_cache_file)
+        self.pictogram_cache = self._load_cache(self.pictogram_cache_file)
+
+    def _load_cache(self, cache_file: str) -> dict:
+        """加载缓存文件"""
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Failed to load cache from {cache_file}: {e}")
+                return {}
+        return {}
+
+    def _save_cache(self, cache_file: str, cache_data: dict):
+        """保存缓存文件"""
+        try:
+            with open(cache_file, 'w', encoding='utf-8') as f:
+                json.dump(cache_data, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"Failed to save cache to {cache_file}: {e}")
+
+    def _generate_cache_key(self, **kwargs) -> str:
+        """
+        生成缓存键（基于输入参数的哈希值）
+
+        Args:
+            **kwargs: 任意数量的键值对参数
+
+        Returns:
+            str: SHA256 哈希值
+        """
+        # 将所有参数转换为字符串并排序，确保相同参数生成相同的键
+        param_str = json.dumps(kwargs, sort_keys=True)
+        return hashlib.sha256(param_str.encode('utf-8')).hexdigest()
         
     def load_prompt_file(self, filename: str) -> str:
         """Load prompt file content"""
@@ -141,21 +176,10 @@ class InfographicImageGenerator:
                 print(f"Generated title image prompt: {prompt}...")
                 
             elif prompt_type == "pictogram":
-                # Read pictogram prompt file and use GPT-4.1 to generate professional image prompt
+                # 直接使用简化的 prompt 模板生成图片
                 pictogram_prompt_template = self.load_prompt_file("generate_pictogram_prompt.md")
-                
-                style_choice = random.choice(style_options)
-                subject_choice = random.choice(subject_options)
-                pictogram_prompt = pictogram_prompt_template.replace("{title}", title).replace("{color}", f"{color}").replace("{style_choice}", f"{style_choice}").replace("{subject_choice}", f"{subject_choice}")
-                
-                response = self.client.chat.completions.create(
-                    model="gpt-image-1",
-                    messages=[
-                        {"role": "user", "content": pictogram_prompt}
-                    ],
-                )
-                prompt = response.choices[0].message.content.strip()
-                print(f"Generated pictogram image prompt: {prompt}...")
+                prompt = pictogram_prompt_template.replace("{title}", title).replace("{color}", f"{color}")
+                print(f"Pictogram prompt: {prompt}")
             
             return prompt
             
@@ -174,6 +198,7 @@ class InfographicImageGenerator:
                 n=1,
                 size="1024x1024",
                 quality="high",
+                background="transparent",  # 生成透明背景图片
             )
 
             if response and response.data:
@@ -227,112 +252,6 @@ class InfographicImageGenerator:
             print(f"Failed to generate image: {e}")
             return False
 
-    def generate_title_image(self, title_text: str, reference_image_path: str, output_filename: str) -> bool:
-        """
-        Generate title image using Gemini model with reference image style
-
-        Args:
-            title_text: The title text to generate image for
-            reference_image_path: Path to the reference chart image for style
-            output_filename: Path to save the generated image
-
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            print(f"Generating title image for: {title_text}")
-
-            # Read and encode reference image
-            with open(reference_image_path, 'rb') as img_file:
-                reference_image_base64 = base64.b64encode(img_file.read()).decode('utf-8')
-
-            # Determine image mime type
-            if reference_image_path.lower().endswith('.png'):
-                mime_type = "image/png"
-            elif reference_image_path.lower().endswith('.jpg') or reference_image_path.lower().endswith('.jpeg'):
-                mime_type = "image/jpeg"
-            elif reference_image_path.lower().endswith('.svg'):
-                # SVG needs special handling - convert to PNG first or use as text
-                mime_type = "image/svg+xml"
-            else:
-                mime_type = "image/png"
-
-            # Create prompt for Gemini
-            prompt = f"""参考这个图表的视觉风格（颜色搭配、字体风格），生成一个**纯标题文字图片**。
-
-标题内容："{title_text}"
-
-严格要求：
-1. **只生成标题文字**，禁止生成任何图表、数据、图形、图标或其他元素
-2. 标题文字必须清晰可读，使用与参考图表相似的字体风格和颜色
-3. 背景必须是透明
-4. 图片比例为宽扁形（宽高比约为 4:1 或 5:1），适合作为信息图表的横幅标题
-5. 文字居中排列，可以是单行或两行
-6. 不要添加任何装饰性图案、边框或阴影
-
-输出：一张简洁的标题文字图片，仅包含"{title_text}"这几个字"""
-
-            # Call Gemini API
-            response = self.client.chat.completions.create(
-                model="gemini-3-pro-image-preview",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{mime_type};base64,{reference_image_base64}"
-                                }
-                            },
-                            {
-                                "type": "text",
-                                "text": prompt
-                            }
-                        ],
-                    },
-                ],
-                modalities=["text", "image"],
-                temperature=0.7,
-            )
-
-            # Process response
-            if (
-                hasattr(response.choices[0].message, "multi_mod_content")
-                and response.choices[0].message.multi_mod_content is not None
-            ):
-                for part in response.choices[0].message.multi_mod_content:
-                    if "inline_data" in part and part["inline_data"] is not None:
-                        print("🖼️ Title image content received")
-                        image_data = base64.b64decode(part["inline_data"]["data"])
-                        image = Image.open(BytesIO(image_data))
-
-                        # Convert to RGBA for transparency
-                        image = image.convert('RGBA')
-
-                        # Process white background to transparent
-                        data = image.getdata()
-                        new_data = []
-                        for item in data:
-                            if item[0] > 235 and item[1] > 235 and item[2] > 235:
-                                new_data.append((255, 255, 255, 0))
-                            else:
-                                new_data.append(item)
-                        image.putdata(new_data)
-
-                        # Save image
-                        os.makedirs(os.path.dirname(output_filename), exist_ok=True)
-                        image.save(output_filename)
-                        print(f"✅ Title image saved to: {output_filename}")
-                        return True
-
-            print("No valid image response received from Gemini")
-            return False
-
-        except Exception as e:
-            print(f"Failed to generate title image: {e}")
-            return False
-    
     def process_csv_file(self, csv_file: str):
         """Process a single CSV file"""
         print(f"\nProcessing CSV file: {csv_file}")
@@ -396,73 +315,139 @@ class InfographicImageGenerator:
                 print(f"Error processing file {csv_file}: {e}")
                 continue
     
-    def generate_title_option(self, csv_path: str, reference_image_path: str, output_dir: str = None):
+    def generate_single_title(self, csv_path: str, bg_color: str, output_filename: str, use_cache: bool = True):
         """
-        Generate title options in parallel
+        Generate a single title image using the title_generation module
 
         Args:
             csv_path: Path to the CSV data file
-            reference_image_path: Path to the reference chart image for style
-            output_dir: Directory to save generated title images (optional)
-
-        Returns:
-            Dict with title options including text and image paths
-        """
-        title_options = {}
-        csv_data = self.read_csv_data(csv_path)
-
-        if output_dir is None:
-            output_dir = f"{self.output_dir}/titles"
-
-        def generate_single_title(i):
-            # Step 1: Generate title text from CSV data using LLM
-            title_text = self.generate_title_text(csv_data)
-
-            # Step 2: Generate title image using Gemini with reference image style
-            output_filename = os.path.join(output_dir, f"title_{i}.png")
-            success = self.generate_title_image(title_text, reference_image_path, output_filename)
-
-            return f"title_{i}.png", {
-                'title_text': title_text,
-                'image_path': output_filename if success else None,
-                'success': success
-            }
-
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(generate_single_title, i) for i in range(5)]
-            for future in as_completed(futures):
-                key, value = future.result()
-                title_options[key] = value
-
-        return title_options
-
-    def generate_single_title(self, csv_path: str, reference_image_path: str, output_filename: str):
-        """
-        Generate a single title image
-
-        Args:
-            csv_path: Path to the CSV data file
-            reference_image_path: Path to the reference chart image for style
+            bg_color: Background color hex code (e.g., "#ff6a00")
             output_filename: Path to save the generated title image
+            use_cache: Whether to use cached results (False for regeneration)
 
         Returns:
             Dict with title text and image path
         """
+        import shutil
+
+        # 生成缓存键
+        cache_key = self._generate_cache_key(
+            csv_path=csv_path,
+            bg_color=bg_color,
+            type='title'
+        )
+
+        # 缓存文件路径（保存在 buffer/generation_cache/titles 中）
+        cache_image_filename = f"{cache_key}.png"
+        cache_image_path = os.path.join(self.title_cache_dir, cache_image_filename)
+
+        # 检查缓存（如果允许使用缓存）
+        if use_cache and cache_key in self.title_cache:
+            cached_result = self.title_cache[cache_key]
+            print(f"[CACHE HIT] Using cached title for {csv_path}")
+
+            # 检查缓存的文件是否仍然存在
+            if os.path.exists(cache_image_path):
+                # 复制缓存文件到输出路径
+                os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+                shutil.copy(cache_image_path, output_filename)
+
+                return {
+                    'title_text': cached_result.get('title_text'),
+                    'image_path': output_filename,
+                    'success': True
+                }
+
+            print(f"[CACHE MISS] Cached image not found, regenerating...")
+
         csv_data = self.read_csv_data(csv_path)
 
         # Step 1: Generate title text from CSV data using LLM
         title_text = self.generate_title_text(csv_data)
 
-        # Step 2: Generate title image using Gemini with reference image style
-        success = self.generate_title_image(title_text, reference_image_path, output_filename)
+        # 测试模式：直接复制测试图片到缓存和目标路径
+        if TEST_MODE:
+            print(f"[TEST MODE] Skipping title generation, using test image")
+            os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+            if os.path.exists(TEST_TITLE_IMAGE):
+                # 保存到缓存目录
+                shutil.copy(TEST_TITLE_IMAGE, cache_image_path)
+                # 复制到输出路径
+                shutil.copy(TEST_TITLE_IMAGE, output_filename)
 
-        return {
-            'title_text': title_text,
-            'image_path': output_filename if success else None,
-            'success': success
-        }
+                result = {
+                    'title_text': title_text,
+                    'cache_path': cache_image_path,
+                    'success': True
+                }
+                # 保存到缓存
+                self.title_cache[cache_key] = result
+                self._save_cache(self.title_cache_file, self.title_cache)
 
-    def generate_single_pictogram(self, title_text: str, colors, output_filename: str):
+                return {
+                    'title_text': title_text,
+                    'image_path': output_filename,
+                    'success': True
+                }
+            else:
+                print(f"[TEST MODE] Test image not found: {TEST_TITLE_IMAGE}")
+                return {
+                    'title_text': title_text,
+                    'image_path': None,
+                    'success': False
+                }
+
+        # Step 2: Generate title image using the title_generation module
+        try:
+            from generate_full_image import get_image_only_title
+
+            # 先生成到缓存路径
+            result_path = get_image_only_title(
+                texts=[title_text],
+                bg_hex=bg_color,
+                save_path=cache_image_path,
+                prompt_times=1,
+                image_times=1
+            )
+
+            success = result_path is not None and os.path.exists(cache_image_path)
+            print(f"Title image generation: {'success' if success else 'failed'}")
+
+            if success:
+                # 复制到输出路径
+                os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+                shutil.copy(cache_image_path, output_filename)
+
+                # 保存到缓存元数据
+                cache_result = {
+                    'title_text': title_text,
+                    'cache_path': cache_image_path,
+                    'success': True
+                }
+                self.title_cache[cache_key] = cache_result
+                self._save_cache(self.title_cache_file, self.title_cache)
+
+                return {
+                    'title_text': title_text,
+                    'image_path': output_filename,
+                    'success': True
+                }
+            else:
+                return {
+                    'title_text': title_text,
+                    'image_path': None,
+                    'success': False
+                }
+
+        except Exception as e:
+            print(f"Failed to generate title image: {e}")
+            return {
+                'title_text': title_text,
+                'image_path': None,
+                'success': False
+            }
+
+    def generate_single_pictogram(self, title_text: str, colors, output_filename: str, use_cache: bool = True):
         """
         Generate a single pictogram image
 
@@ -470,37 +455,108 @@ class InfographicImageGenerator:
             title_text: The title text for context
             colors: Color palette to use
             output_filename: Path to save the generated pictogram image
+            use_cache: Whether to use cached results (False for regeneration)
 
         Returns:
             Dict with pictogram prompt and success status
         """
+        import shutil
+
+        # 生成缓存键
+        # 将 colors 转换为可哈希的字符串
+        colors_str = str(colors) if colors else ''
+        cache_key = self._generate_cache_key(
+            title_text=title_text,
+            colors=colors_str,
+            type='pictogram'
+        )
+
+        # 缓存文件路径（保存在 buffer/generation_cache/pictograms 中）
+        cache_image_filename = f"{cache_key}.png"
+        cache_image_path = os.path.join(self.pictogram_cache_dir, cache_image_filename)
+
+        # 检查缓存（如果允许使用缓存）
+        if use_cache and cache_key in self.pictogram_cache:
+            cached_result = self.pictogram_cache[cache_key]
+            print(f"[CACHE HIT] Using cached pictogram for title: {title_text}")
+
+            # 检查缓存的文件是否仍然存在
+            if os.path.exists(cache_image_path):
+                # 复制缓存文件到输出路径
+                os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+                shutil.copy(cache_image_path, output_filename)
+
+                return {
+                    'pictogram_prompt': cached_result.get('pictogram_prompt'),
+                    'image_path': output_filename,
+                    'success': True
+                }
+
+            print(f"[CACHE MISS] Cached image not found, regenerating...")
+
+        # 测试模式：直接复制测试图片到缓存和目标路径
+        if TEST_MODE:
+            print(f"[TEST MODE] Skipping pictogram generation, using test image")
+            os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+            if os.path.exists(TEST_PICTOGRAM_IMAGE):
+                # 保存到缓存目录
+                shutil.copy(TEST_PICTOGRAM_IMAGE, cache_image_path)
+                # 复制到输出路径
+                shutil.copy(TEST_PICTOGRAM_IMAGE, output_filename)
+
+                result = {
+                    'pictogram_prompt': '[TEST MODE]',
+                    'cache_path': cache_image_path,
+                    'success': True
+                }
+                # 保存到缓存
+                self.pictogram_cache[cache_key] = result
+                self._save_cache(self.pictogram_cache_file, self.pictogram_cache)
+
+                return {
+                    'pictogram_prompt': '[TEST MODE]',
+                    'image_path': output_filename,
+                    'success': True
+                }
+            else:
+                print(f"[TEST MODE] Test image not found: {TEST_PICTOGRAM_IMAGE}")
+                return {
+                    'pictogram_prompt': '[TEST MODE]',
+                    'image_path': None,
+                    'success': False
+                }
+
         # Generate pictogram prompt
         pictogram_prompt = self.generate_image_prompt(title_text, "pictogram", colors)
 
-        # Generate the pictogram image
-        success = self.generate_image(pictogram_prompt, "pictogram", output_filename)
+        # Generate the pictogram image to cache path first
+        success = self.generate_image(pictogram_prompt, "pictogram", cache_image_path)
 
-        return {
-            'pictogram_prompt': pictogram_prompt,
-            'image_path': output_filename if success else None,
-            'success': success
-        }
+        if success and os.path.exists(cache_image_path):
+            # 复制到输出路径
+            os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+            shutil.copy(cache_image_path, output_filename)
 
-    def generate_pictogram_option(self, title_text, colors):
-        """Generate pictogram options"""
-        pictogram_options = {}
+            # 保存到缓存元数据
+            cache_result = {
+                'pictogram_prompt': pictogram_prompt,
+                'cache_path': cache_image_path,
+                'success': True
+            }
+            self.pictogram_cache[cache_key] = cache_result
+            self._save_cache(self.pictogram_cache_file, self.pictogram_cache)
 
-        def generate_single_pictogram(i):
-            pictogram_prompt = self.generate_image_prompt(title_text, "pictogram", colors)
-            return f"pictogram_{i}.png", {"pictogram_prompt": pictogram_prompt}
-
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(generate_single_pictogram, i) for i in range(5)]
-            for future in as_completed(futures):
-                key, value = future.result()
-                pictogram_options[key] = value
-
-        return pictogram_options
+            return {
+                'pictogram_prompt': pictogram_prompt,
+                'image_path': output_filename,
+                'success': True
+            }
+        else:
+            return {
+                'pictogram_prompt': pictogram_prompt,
+                'image_path': None,
+                'success': False
+            }
 
 def main():
     """Main function"""

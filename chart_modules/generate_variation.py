@@ -53,28 +53,56 @@ def make_infographic(data: Dict, chart_svg_content: str, output_dir: str, bg_col
     return chart_svg_content
 
 
-def generate_variation(input: str, output: str, chart_template: str, main_colors = None, bg_color = None) -> bool:
+def generate_variation(input: str, output: str, chart_template, main_colors = None, bg_color = None) -> bool:
     """
     Pipeline入口函数，处理单个文件的信息图生成
-    
+
     Args:
         input: 输入JSON文件路径
         output: 输出SVG文件路径
-        chart_name: 指定图表名称，如果提供则使用该图表，否则自动选择
-        
+        chart_template: 可以是字符串（模板路径）或列表 [模板路径, 字段列表]
+
     Returns:
         bool: 处理是否成功
     """
     try:
-        print("chart_template:",chart_template)
+        print(f"[DEBUG generate_variation] 开始")
+        print(f"[DEBUG generate_variation] input: {input}")
+        print(f"[DEBUG generate_variation] output: {output}")
+        print(f"[DEBUG generate_variation] chart_template: {chart_template}")
+        print(f"[DEBUG generate_variation] main_colors: {main_colors}")
+        print(f"[DEBUG generate_variation] bg_color: {bg_color}")
+
+        # 处理 chart_template 格式
+        if isinstance(chart_template, list):
+            # 格式: [template_path, fields] 或 [[template_path, fields]]
+            if len(chart_template) >= 2 and isinstance(chart_template[1], list):
+                template_path = chart_template[0]
+                template_fields = chart_template[1]
+            else:
+                template_path = chart_template[0]
+                template_fields = []
+            template_for_select = [(template_path, template_fields)]
+        else:
+            # 字符串格式的模板路径
+            template_path = chart_template
+            template_for_select = [(template_path, [])]
+
+        print("chart_template:", chart_template)
+        print("template_for_select:", template_for_select)
         # 读取输入文件
         with open(input, "r", encoding="utf-8") as f:
             data = json.load(f)
         data["name"] = input
-        
+
         # 选择模板
-        engine, chart_type, chart_name, ordered_fields = select_template([chart_template])
-        
+        engine, chart_type, chart_name, ordered_fields = select_template(template_for_select)
+
+        # 检查模板是否被过滤（在block_list中）
+        if engine is None or chart_name is None:
+            print(f"[跳过] 模板在block_list中，不生成: {chart_template}")
+            return False
+
         # 颜色
         # print(data["colors"])
         data = generate_distinct_palette(data, main_colors, bg_color)

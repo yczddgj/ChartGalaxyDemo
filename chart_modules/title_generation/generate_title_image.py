@@ -5,10 +5,17 @@ from check_image import check
 from openai import OpenAI
 import base64
 import os
-def get_image(  bg_hex, 
-                prompt_path = 'prompts/generated_output.md',
+
+# 获取当前文件所在目录的绝对路径
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+
+def get_image(  bg_hex,
+                prompt_path = None,
                 save_path = 'images/title/generated_image.png',
                 res = "RESOLUTION_1408_576"):
+    # 使用绝对路径
+    if prompt_path is None:
+        prompt_path = os.path.join(_current_dir, 'prompts/generated_output.md')
     url = "https://aihubmix.com/v1"
     api_key = "sk-ug32KbbvEDPucqnaB207A5EcEd6f47Dc887c14249a12Ff43"
     client = OpenAI(
@@ -84,11 +91,11 @@ def get_image(  bg_hex,
     #         file.write(response_image.content)
     # return response
 
-def get_title(title, 
-            bg_hex, 
-            prompt_times = 2, 
-            image_times = 4, 
-            image_res = "RESOLUTION_1536_640",#"RESOLUTION_1408_576", 
+def get_title(title,
+            bg_hex,
+            prompt_times = 2,
+            image_times = 4,
+            image_res = "RESOLUTION_1536_640",#"RESOLUTION_1408_576",
             save_path = 'images/title/generated_image.png'):
     succ = 0
     save_path_list = []
@@ -100,16 +107,20 @@ def get_title(title,
         print("Prompt generated.")
         for j in range(image_times):
             print("Image times: ", j)
-            save_path_file = f"{save_path}_{i}.png"
+            # 如果只生成一张图片，直接使用传入的路径
+            if prompt_times == 1 and image_times == 1:
+                save_path_file = save_path if save_path.endswith('.png') else f"{save_path}.png"
+            else:
+                save_path_file = f"{save_path}_{i}.png"
             save_path_list.append(save_path_file)
             image_response = get_image(bg_hex=bg_hex, res=image_res, save_path=save_path_file)
             print("image_response: ", image_response)
-            
+            succ = 1
             # crop(image_path=save_path)
             # check_result, check_response = check(title, image_path=save_path)
             # print("check_response: ", check_response)
             # print("check_result: ", check_result)
-            
+
             # if check_result == "Yes":
             #     succ = 1
             #     break

@@ -10,6 +10,8 @@ import traceback
 import sys
 import json
 import re
+import hashlib
+import shutil
 from pathlib import Path
 from datetime import datetime
 
@@ -17,9 +19,11 @@ project_root = Path(__file__).parent.parent  # 根据实际结构调整
 sys.path.append("ChartPipeline")
 # print(f"Python路径: {sys.path}")
 
-from chart_modules.util import image_to_base64, find_free_port, get_csv_files, read_csv_data
+from chart_modules.util import image_to_base64, find_free_port, get_csv_files, read_csv_data, get_sorted_infographics_by_theme, parse_reference_layout
 from chart_modules.generate_variation import generate_variation
-from chart_modules.process import conduct_reference_finding, conduct_layout_extraction, conduct_title_generation, conduct_pictogram_generation
+from chart_modules.process import conduct_reference_finding, conduct_layout_extraction, conduct_title_generation, conduct_pictogram_generation, conduct_chart_type_preview_generation, conduct_variation_preview_generation
+from chart_modules.style_refinement import process_final_export, direct_generate_with_ai, svg_to_png
+from chart_modules.ChartPipeline.modules.infographics_generator.template_utils import block_list
 
 
 app = Flask(__name__)
@@ -88,6 +92,8 @@ def authoring():
 @app.route('/authoring/chart', methods=['GET'])
 def generate_chart():
     global generation_status
+    load_generation_status()
+
     charttype = request.args.get('charttype', 'bar')
     datafile = request.args.get('data', 'test')
     title = request.args.get('title', 'origin_images/titles/App_title.png')
@@ -95,37 +101,89 @@ def generate_chart():
 
     app.logger.info(f"Chart type: {charttype}")
     app.logger.info(f"Data: {datafile}")
-    
+
     try:
         title = f"buffer/{generation_status['id']}/{title}"
         pictogram = f"buffer/{generation_status['id']}/{pictogram}"
         img1_base64 = image_to_base64(title)
         img2_base64 = image_to_base64(pictogram)
-        
+
+        # 查找选中的 variation 的完整模板信息
+        selected_variation = None
+        variations = generation_status.get('available_variations', [])
+        for v in variations:
+            if v['name'] == charttype:
+                selected_variation = v
+                break
+
+        if selected_variation:
+            template_path = selected_variation['template']
+            template_fields = selected_variation.get('fields', [])
+            chart_template = [template_path, template_fields]
+        else:
+            # 回退：尝试从 extraction_templates 中查找
+            templates = generation_status.get('extraction_templates', [])
+            for t in templates:
+                if t[0].endswith(charttype):
+                    template_path = t[0]
+                    template_fields = t[1] if len(t) > 1 else []
+                    chart_template = [template_path, template_fields]
+                    break
+            else:
+                # 如果还找不到，使用原来的方式（可能会失败）
+                chart_template = charttype
+
         current_time = datetime.now().strftime("%Y%m%d%H%M%S")
-        print("generate_variation:",charttype, generation_status['style']["colors"], generation_status['style']["bg_color"])
+        output_path = f"buffer/{generation_status['id']}/{charttype}.svg"
+        print("generate_variation:", charttype, chart_template, generation_status['style']["colors"], generation_status['style']["bg_color"])
+
         svg = generate_variation(
             input = f"processed_data/{datafile}.json",
-            output = f"buffer/{generation_status['id']}",
-            chart_template = charttype,
+            output = output_path,
+            chart_template = chart_template,
             main_colors = generation_status['style']["colors"],
             bg_color = generation_status['style']["bg_color"]
         )
-        
-        with open(f"buffer/{generation_status['id']}/{charttype}.svg", 'r', encoding='utf-8') as file:
+
+        with open(output_path, 'r', encoding='utf-8') as file:
             svg = file.read()
 
         if svg is None:
             return jsonify({'error': 'no result'}), 401
 
-        # 给 <text> 标签添加 class，便于前端编辑
-        svg = re.sub(r'<text', '<text class="editable-text"', svg)
+        # 获取背景色并转换为 hex 格式
+        bg_color = generation_status['style'].get("bg_color", [245, 243, 239])
+        if isinstance(bg_color, list) and len(bg_color) == 3:
+            bg_hex = "#{:02x}{:02x}{:02x}".format(bg_color[0], bg_color[1], bg_color[2])
+        else:
+            bg_hex = "#f5f3ef"
 
-        # 返回 JSON 字典
+        # 将 SVG 转换为 PNG
+        png_output_path = output_path.replace('.svg', '.png')
+        svg_to_png(svg, png_output_path, background_color=bg_hex)
+
+        # 将 PNG 转换为 base64
+        chart_base64 = image_to_base64(png_output_path)
+
+        # 解析参考图的布局信息
+        layout = None
+        reference_image_path = generation_status.get('selected_reference')
+        if reference_image_path:
+            # 提取文件名（例如 "infographics/Art-Origin.png" -> "Art-Origin.png"）
+            reference_filename = os.path.basename(reference_image_path)
+            layout = parse_reference_layout(reference_filename)
+            if layout:
+                print(f"成功解析参考图布局: {reference_filename}")
+            else:
+                print(f"未找到参考图布局信息: {reference_filename}")
+
+        # 返回 JSON 字典（chart 现在是 PNG 图片而不是 SVG）
         return jsonify({
-            'svg': svg,
+            'chart': chart_base64,
             'img1': img1_base64,
-            'img2': img2_base64
+            'img2': img2_base64,
+            'bg_color': bg_hex,
+            'layout': layout  # 添加布局信息
         })
 
     except Exception as e:
@@ -150,11 +208,16 @@ def start_find_reference(datafile):
     # 寻找适配的variation
     global generation_status
     load_generation_status()
-    
+
     generation_status["selected_data"] = f'processed_data/{datafile.replace("csv","json")}'
-    # generation_status['id'] = f'{datetime.now().strftime("%Y%m%d%H%M%S")}_{random.randint(1000, 9999)}'
-    generation_status['id'] = 'test_id'
-    
+    generation_status['id'] = f'{datetime.now().strftime("%Y%m%d%H%M%S")}_{random.randint(1000, 9999)}'
+    # generation_status['id'] = 'test_id'
+
+    # 重置 chart type 和 variation 相关状态
+    generation_status['chart_type_page'] = 0
+    generation_status['variation_page'] = 0
+    generation_status['selected_chart_type'] = ''
+
     # 启动布局抽取线程
     thread = Thread(target = threaded_task, args=(conduct_reference_finding, datafile, generation_status,))
     thread.start()
@@ -206,8 +269,8 @@ def regenerate_title(datafile):
     global generation_status
     load_generation_status()
 
-    # 启动标题重新生成线程
-    thread = Thread(target=threaded_task, args=(conduct_title_generation, datafile, generation_status,))
+    # 启动标题重新生成线程，use_cache=False 强制重新生成
+    thread = Thread(target=threaded_task, args=(conduct_title_generation, datafile, generation_status, False))
     thread.start()
 
     return jsonify({'status': 'started'})
@@ -218,8 +281,8 @@ def regenerate_pictogram(title):
     global generation_status
     load_generation_status()
 
-    # 启动配图重新生成线程
-    thread = Thread(target=threaded_task, args=(conduct_pictogram_generation, title, generation_status,))
+    # 启动配图重新生成线程，use_cache=False 强制重新生成
+    thread = Thread(target=threaded_task, args=(conduct_pictogram_generation, title, generation_status, False))
     thread.start()
 
     return jsonify({'status': 'started'})
@@ -250,6 +313,194 @@ def regenerate_pictogram(title):
 def get_status():
     return jsonify(generation_status)
 
+@app.route('/api/chart_types')
+def get_chart_types():
+    """获取去重后的 chart type 列表，每次返回3个"""
+    global generation_status
+    load_generation_status()
+
+    # 从 extraction_templates 中提取 chart type 并去重
+    templates = generation_status.get('extraction_templates', [])
+    chart_types = []
+    seen_types = set()
+
+    for template in templates:
+        # 模板格式: "d3-js/grouped scatterplot/grouped_scatterplot_plain_chart_01"
+        parts = template[0].split('/')
+        if len(parts) >= 2:
+            chart_type = parts[1]  # 提取 chart type，如 "grouped scatterplot"
+            if chart_type not in seen_types:
+                seen_types.add(chart_type)
+                chart_types.append({
+                    'type': chart_type,
+                    'template': template[0]  # 保存一个代表性模板
+                })
+
+    # 保存到 generation_status
+    generation_status['available_chart_types'] = chart_types
+    save_generation_status()  # 保存到缓存文件
+
+    # 分页获取，每页3个
+    page = generation_status.get('chart_type_page', 0)
+    page_size = 3
+    start_idx = page * page_size
+    end_idx = start_idx + page_size
+
+    current_page_types = chart_types[start_idx:end_idx]
+    has_more = end_idx < len(chart_types)
+
+    return jsonify({
+        'chart_types': current_page_types,
+        'page': page,
+        'total': len(chart_types),
+        'has_more': has_more
+    })
+
+@app.route('/api/chart_types/generate_previews')
+def generate_chart_type_previews():
+    """为当前页的 chart types 生成预览图"""
+    global generation_status
+    load_generation_status()
+
+    print(f"[DEBUG API] generate_chart_type_previews 被调用")
+    print(f"[DEBUG API] generation_status keys: {generation_status.keys()}")
+
+    chart_types = generation_status.get('available_chart_types', [])
+    page = generation_status.get('chart_type_page', 0)
+    page_size = 3
+    start_idx = page * page_size
+    end_idx = start_idx + page_size
+    current_page_types = chart_types[start_idx:end_idx]
+
+    print(f"[DEBUG API] available_chart_types 数量: {len(chart_types)}")
+    print(f"[DEBUG API] current_page_types: {current_page_types}")
+    print(f"[DEBUG API] extraction_templates 数量: {len(generation_status.get('extraction_templates', []))}")
+
+    # 启动预览生成线程
+    thread = Thread(target=threaded_task, args=(conduct_chart_type_preview_generation, current_page_types, generation_status,))
+    thread.start()
+
+    return jsonify({'status': 'started', 'chart_types': current_page_types})
+
+@app.route('/api/chart_types/next')
+def get_next_chart_types():
+    """获取下一批 chart types（加载更多功能）"""
+    global generation_status
+    load_generation_status()
+
+    chart_types = generation_status.get('available_chart_types', [])
+    page = generation_status.get('chart_type_page', 0)
+    page_size = 3
+    total_pages = (len(chart_types) + page_size - 1) // page_size
+
+    # 加载下一页（不循环，如果已经到最后一页则不再加载）
+    if (page + 1) < total_pages:
+        generation_status['chart_type_page'] = page + 1
+        save_generation_status()
+
+    return get_chart_types()
+
+@app.route('/api/chart_types/select/<chart_type>')
+def select_chart_type(chart_type):
+    """选择一个 chart type，并生成对应的 variations"""
+    global generation_status
+    load_generation_status()
+
+    generation_status['selected_chart_type'] = chart_type
+    generation_status['variation_page'] = 0  # 重置 variation 分页
+
+    # 筛选该 chart type 下的所有 variations
+    templates = generation_status.get('extraction_templates', [])
+    variations = []
+
+    for template in templates:
+        parts = template[0].split('/')
+        if len(parts) >= 2 and parts[1] == chart_type:
+            # 提取 variation 名称 (最后一部分)
+            variation_name = parts[-1] if len(parts) >= 3 else template[0]
+
+            # 过滤掉 block_list 中的模板
+            if variation_name in block_list:
+                print(f"[过滤] 跳过被禁用的样式: {variation_name}")
+                continue
+
+            variations.append({
+                'name': variation_name,
+                'template': template[0],
+                'fields': template[1] if len(template) > 1 else []
+            })
+
+    generation_status['available_variations'] = variations
+    save_generation_status()
+
+    return jsonify({
+        'status': 'selected',
+        'chart_type': chart_type,
+        'variation_count': len(variations)
+    })
+
+@app.route('/api/variations')
+def get_variations():
+    """获取当前 chart type 的 variations，每次返回3个"""
+    global generation_status
+    load_generation_status()
+
+    variations = generation_status.get('available_variations', [])
+
+    # 分页获取，每页3个
+    page = generation_status.get('variation_page', 0)
+    page_size = 3
+    start_idx = page * page_size
+    end_idx = start_idx + page_size
+
+    current_page_variations = variations[start_idx:end_idx]
+    has_more = end_idx < len(variations)
+
+    return jsonify({
+        'variations': current_page_variations,
+        'page': page,
+        'total': len(variations),
+        'has_more': has_more,
+        'chart_type': generation_status.get('selected_chart_type', '')
+    })
+
+@app.route('/api/variations/generate_previews')
+def generate_variation_previews():
+    """为当前页的 variations 生成预览图"""
+    global generation_status
+    load_generation_status()
+
+    variations = generation_status.get('available_variations', [])
+    page = generation_status.get('variation_page', 0)
+    page_size = 3
+    start_idx = page * page_size
+    end_idx = start_idx + page_size
+    current_page_variations = variations[start_idx:end_idx]
+
+    # 启动预览生成线程
+    thread = Thread(target=threaded_task, args=(conduct_variation_preview_generation, current_page_variations, generation_status,))
+    thread.start()
+
+    return jsonify({'status': 'started', 'variations': current_page_variations})
+
+@app.route('/api/variations/next')
+def get_next_variations():
+    """获取下一批 variations（加载更多功能）"""
+    global generation_status
+    load_generation_status()
+
+    variations = generation_status.get('available_variations', [])
+    page = generation_status.get('variation_page', 0)
+    page_size = 3
+    total_pages = (len(variations) + page_size - 1) // page_size
+
+    # 加载下一页（不循环，如果已经到最后一页则不再加载）
+    if (page + 1) < total_pages:
+        generation_status['variation_page'] = page + 1
+        save_generation_status()
+
+    return get_variations()
+
 @app.route('/api/variation/selection')
 def get_extraction_templates():
     global generation_status
@@ -259,28 +510,76 @@ def get_extraction_templates():
 
 @app.route('/api/references')
 def get_references():
-    """获取参考图：随机选择5张图片，第一张作为主要推荐"""
-    other_infographics_dir = 'infographics'
-    random_images = []
+    """获取参考图：基于主题相似性排序，支持分页（首次返回5张，可加载更多）"""
+    global generation_status
+    load_generation_status()
 
-    if os.path.exists(other_infographics_dir):
-        files = os.listdir(other_infographics_dir)
-        image_files = [f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+    # 获取当前用户的数据文件
+    selected_data = generation_status.get('selected_data', '')
+    datafile = selected_data.replace('processed_data/', '').replace('.json', '.csv') if selected_data else ''
 
-        # 随机选择5张图片
-        if len(image_files) >= 5:
-            random_images = random.sample(image_files, 5)
-        else:
-            random_images = image_files  # 如果少于5张，就全部使用
+    # 获取分页参数
+    page = generation_status.get('reference_page', 0)
+    page_size = 5
 
-    # 第一张作为主要推荐，其余4张作为备选
-    main_image = random_images[0] if random_images else None
-    other_images = random_images[1:5] if len(random_images) > 1 else []
+    if datafile:
+        # 根据主题相似性排序
+        sorted_images = get_sorted_infographics_by_theme(datafile)
+    else:
+        # 如果没有数据文件，使用随机排序
+        infographics_dir = 'infographics'
+        image_files = []
+        if os.path.exists(infographics_dir):
+            files = os.listdir(infographics_dir)
+            image_files = [f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg')) and 'Origin' in f]
+            random.shuffle(image_files)
 
+        sorted_images = [{'filename': f, 'similarity': 0.0, 'theme': 'Unknown'} for f in image_files]
+
+    # 分页
+    start_idx = page * page_size
+    end_idx = start_idx + page_size
+    current_page_images = sorted_images[start_idx:end_idx]
+    has_more = end_idx < len(sorted_images)
+
+    # 提取文件名
+    image_names = [img['filename'] for img in current_page_images]
+
+    # 所有图片地位一样，不区分主图和其他图
     return jsonify({
-        'main_image': main_image,
-        'random_images': other_images
+        'main_image': None,  # 不再有主图的概念
+        'random_images': image_names,  # 所有图片都一样显示
+        'page': page,
+        'total': len(sorted_images),
+        'has_more': has_more,
+        'similarities': {img['filename']: img['similarity'] for img in current_page_images}
     })
+
+@app.route('/api/references/next')
+def get_next_references():
+    """获取下一批参考图（加载更多功能）"""
+    global generation_status
+    load_generation_status()
+
+    # 获取当前数据文件
+    selected_data = generation_status.get('selected_data', '')
+    datafile = selected_data.replace('processed_data/', '').replace('.json', '.csv') if selected_data else ''
+
+    if datafile:
+        sorted_images = get_sorted_infographics_by_theme(datafile)
+    else:
+        return jsonify({'status': 'error', 'message': 'No data file selected'}), 400
+    generation_status['reference_page'] = 0
+    page = generation_status.get('reference_page', 0)
+    page_size = 5
+    total_pages = (len(sorted_images) + page_size - 1) // page_size
+
+    # 加载下一页（不循环）
+    if (page + 1) < total_pages:
+        generation_status['reference_page'] = page + 1
+        save_generation_status()
+
+    return get_references()
 
 @app.route('/api/titles')
 def get_titles():
@@ -326,11 +625,233 @@ def serve_other_infographic(filename):
 @app.route('/currentfilepath/<filename>')
 def serve_static_file(filename):
     return send_from_directory(f'buffer/{generation_status["id"]}', filename)
-            
+
 @app.route('/static/<filename>')
 def serve_file(filename):
     return send_from_directory(f'static', filename)
-                      
+
+
+@app.route('/api/export_final', methods=['POST'])
+def export_final():
+    """
+    处理最终导出：接收前端 PNG base64，使用 Gemini 进行风格化
+    """
+    global generation_status
+    load_generation_status()
+
+    try:
+        data = request.json
+        png_base64 = data.get('png_base64')
+
+        if not png_base64:
+            return jsonify({'error': '缺少 PNG 数据'}), 400
+
+        # 获取参考图片路径
+        reference_image_path = generation_status.get('selected_reference')
+        if not reference_image_path:
+            return jsonify({'error': '未选择参考图片'}), 400
+
+        # 获取会话 ID
+        session_id = generation_status.get('id')
+        if not session_id:
+            return jsonify({'error': '会话 ID 不存在'}), 400
+
+        # 启动后台线程处理导出
+        def export_task():
+            try:
+                generation_status['step'] = 'final_export'
+                generation_status['status'] = 'processing'
+                generation_status['progress'] = '正在保存图片...'
+                generation_status['completed'] = False
+                save_generation_status()
+
+                # 处理导出
+                result = process_final_export(
+                    png_base64=png_base64,
+                    reference_image_path=reference_image_path,
+                    session_id=session_id
+                )
+
+                if result['success']:
+                    generation_status['status'] = 'completed'
+                    generation_status['progress'] = '导出完成！'
+                    generation_status['final_image_path'] = result['image_path']
+                else:
+                    generation_status['status'] = 'error'
+                    generation_status['progress'] = result.get('error', '导出失败')
+
+                generation_status['completed'] = True
+                save_generation_status()
+
+            except Exception as e:
+                generation_status['status'] = 'error'
+                generation_status['progress'] = str(e)
+                generation_status['completed'] = True
+                save_generation_status()
+                print(f"导出任务出错: {e}")
+                traceback.print_exc()
+
+        thread = Thread(target=export_task)
+        thread.start()
+
+        return jsonify({'status': 'started'})
+
+    except Exception as e:
+        print(f"导出 API 出错: {e}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/ai_direct_generate', methods=['POST'])
+def ai_direct_generate():
+    """
+    使用AI直接生成最终信息图表（不需要参考图）
+    """
+    global generation_status
+    load_generation_status()
+
+    try:
+        data = request.json
+        chart_svg = data.get('chart_svg')
+        data_file = data.get('data_file')
+
+        if not chart_svg:
+            return jsonify({'status': 'error', 'message': '缺少图表SVG数据'}), 400
+
+        # 使用已有的session_id（即generation_status中的id）
+        session_id = generation_status.get('id')
+        if not session_id:
+            return jsonify({'status': 'error', 'message': '会话ID不存在，请先选择数据'}), 400
+
+        # 计算SVG内容的hash作为缓存key
+        cache_key = hashlib.sha256(chart_svg.encode('utf-8')).hexdigest()
+        cache_dir = "buffer/generation_cache/ai_direct"
+        cache_json_path = "buffer/generation_cache/ai_direct_cache.json"
+        os.makedirs(cache_dir, exist_ok=True)
+
+        # 加载缓存
+        cache_data = {}
+        if os.path.exists(cache_json_path):
+            with open(cache_json_path, 'r', encoding='utf-8') as f:
+                cache_data = json.load(f)
+
+        # 检查缓存是否存在
+        if cache_key in cache_data and os.path.exists(cache_data[cache_key]['cache_path']):
+            print(f"[缓存命中] 使用缓存的AI生成结果: {cache_key}")
+            cached_image_path = cache_data[cache_key]['cache_path']
+
+            # 复制缓存图片到当前session目录
+            buffer_dir = f"buffer/{session_id}"
+            os.makedirs(buffer_dir, exist_ok=True)
+            output_path = os.path.join(buffer_dir, "ai_direct_generated.jpg")
+            shutil.copy2(cached_image_path, output_path)
+
+            # 更新状态
+            generation_status['ai_direct_image'] = output_path
+            generation_status['final_image_path'] = output_path
+            generation_status['step'] = 'ai_direct_generate'
+            generation_status['completed'] = True
+            save_generation_status()
+
+            # 返回通过 /currentfilepath/ 可访问的路径
+            filename = os.path.basename(output_path)
+            accessible_path = f'currentfilepath/{filename}'
+
+            return jsonify({
+                'status': 'success',
+                'image_path': accessible_path,
+                'result_image': accessible_path,
+                'from_cache': True
+            })
+
+        # 缓存未命中，执行AI生成
+        print(f"[缓存未命中] 开始AI直接生成: {cache_key}")
+
+        buffer_dir = f"buffer/{session_id}"
+        os.makedirs(buffer_dir, exist_ok=True)
+
+        # 1. 将SVG转换为PNG
+        chart_png_path = os.path.join(buffer_dir, "chart_for_ai_direct.png")
+
+        # 保存SVG
+        chart_svg_path = os.path.join(buffer_dir, "chart_for_ai_direct.svg")
+        with open(chart_svg_path, 'w', encoding='utf-8') as f:
+            f.write(chart_svg)
+
+        # SVG转PNG
+        if not svg_to_png(chart_svg, chart_png_path):
+            return jsonify({'status': 'error', 'message': 'SVG转PNG失败'}), 500
+
+        # 2. 使用AI直接生成
+        output_path = os.path.join(buffer_dir, "ai_direct_generated.jpg")
+
+        print(f"开始AI直接生成，图表路径: {chart_png_path}")
+        result = direct_generate_with_ai(chart_png_path, output_path)
+
+        if result['success']:
+            # 保存到缓存
+            cache_image_path = os.path.join(cache_dir, f"{cache_key}.jpg")
+            shutil.copy2(result['image_path'], cache_image_path)
+
+            cache_data[cache_key] = {
+                'cache_path': cache_image_path,
+                'timestamp': datetime.now().isoformat(),
+                'success': True
+            }
+
+            with open(cache_json_path, 'w', encoding='utf-8') as f:
+                json.dump(cache_data, f, indent=2, ensure_ascii=False)
+
+            print(f"[已缓存] AI生成结果已保存到缓存: {cache_key}")
+
+            # 更新状态
+            generation_status['ai_direct_image'] = result['image_path']
+            generation_status['final_image_path'] = result['image_path']
+            generation_status['step'] = 'ai_direct_generate'
+            generation_status['completed'] = True
+            save_generation_status()
+
+            # 返回通过 /currentfilepath/ 可访问的路径
+            filename = os.path.basename(result['image_path'])
+            accessible_path = f'currentfilepath/{filename}'
+
+            return jsonify({
+                'status': 'success',
+                'image_path': accessible_path,
+                'result_image': accessible_path,
+                'from_cache': False
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': result.get('error', 'AI生成失败')
+            }), 500
+
+    except Exception as e:
+        print(f"AI直接生成失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/download_final')
+def download_final():
+    """
+    下载最终生成的图片
+    """
+    global generation_status
+    load_generation_status()
+
+    final_image_path = generation_status.get('final_image_path')
+    if not final_image_path or not os.path.exists(final_image_path):
+        return jsonify({'error': '最终图片不存在'}), 404
+
+    # 返回文件
+    directory = os.path.dirname(final_image_path)
+    filename = os.path.basename(final_image_path)
+
+    return send_from_directory(directory, filename, as_attachment=True)
+
 
 
 if __name__ == '__main__':

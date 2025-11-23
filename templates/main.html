@@ -5,46 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChartGalaxy - 信息图表生成器</title>
     <style>
-        #canvas {
-            width: 100%;
-            height: 600px;
-            border: 1px dashed #ccc;
-            position: relative;
-            background: #ffffff;
-            overflow-y: auto;   
-            overflow-x: auto;   
-        }
-
-        /* 包裹每个可操作图形的容器 */
-        .resizable {
-            position: absolute;
-            width: 200px;
-            height: 200px;
-            resize: both;
-            overflow: hidden;
-            border: 2px solid transparent;
-            padding: 0;
-            box-sizing: border-box;
-            background: white;
-            cursor: move;
-        }
-
-        /* 显示选中状态 */
-        .resizable.selected {
-            border-color: #667eea;
-            box-shadow: 0 0 10px rgba(102, 126, 234, 0.5);
-        }
-
-        .resizable img, .resizable svg {
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* 保持比例，不拉伸 */
-            display: block;     /* 避免内联元素的默认间隙 */
-        }
-        .resizing {
-            pointer-events: none; /* 防止鼠标事件穿透造成误拖动 */
-        }
-
         * {
             margin: 0;
             padding: 0;
@@ -89,18 +49,9 @@
             padding: 25px;
         }
 
-        .card-header {
-            color: #764ba2;
-            padding-bottom: 15px;
-            font-size: 1.4rem;
-            font-weight: bold;
-            border-bottom: 2px solid #f0f0f0;
-            margin-bottom: 20px;
-        }
-
         .controls {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 20px;
             margin-bottom: 25px;
         }
@@ -138,7 +89,11 @@
             -moz-appearance: textfield;
         }
 
-        .form-input[type="number"]::-webkit-outer-spin-button,
+        .form-input[type="color"] {
+            padding: 4px;
+            height: 46px;
+            cursor: pointer;
+        }
 
         .btn {
             padding: 12px 24px;
@@ -148,17 +103,16 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
+            margin-right: 10px;
         }
 
         .btn-primary {
             background: linear-gradient(45deg, #667eea, #764ba2);
             color: white;
-            align-self: flex-end;
-            height: 46px;
         }
 
         .btn-primary:hover {
@@ -166,14 +120,33 @@
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
-        .btn-primary:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
         }
 
-        #svg-container {
-            background: white;
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        #canvas-container {
+            background: #f8f9fa;
             border-radius: 10px;
             padding: 20px;
             min-height: 400px;
@@ -183,11 +156,26 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.05);
             border: 1px solid #e1e8ed;
             margin-top: 20px;
+            overflow: auto;
         }
 
-        #svg-container svg {
-            max-width: 100%;
-            height: auto;
+        #fabricCanvas {
+            border: 1px dashed #ccc;
+        }
+
+        .color-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .color-input-wrapper input[type="color"] {
+            flex: 0 0 60px;
+        }
+
+        .color-input-wrapper input[type="text"] {
+            flex: 1;
+            text-transform: uppercase;
         }
 
         .loading {
@@ -227,13 +215,14 @@
             .controls {
                 grid-template-columns: 1fr;
             }
-            
+
             .header h1 {
                 font-size: 2rem;
             }
-            
-            .btn-primary {
+
+            .btn {
                 width: 100%;
+                margin-right: 0;
             }
         }
 
@@ -241,14 +230,107 @@
             .container {
                 padding: 15px;
             }
-            
+
             .card {
                 padding: 15px;
             }
-            
+
             .form-select, .form-input {
                 padding: 10px 12px;
             }
+        }
+
+        /* Refined image preview section */
+        #refined-preview-section {
+            display: none;
+            margin-top: 30px;
+        }
+
+        #refined-preview-section.show {
+            display: block;
+        }
+
+        .refined-preview-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            padding: 25px;
+        }
+
+        .refined-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e1e8ed;
+        }
+
+        .refined-preview-header h3 {
+            margin: 0;
+            color: #333;
+            font-size: 1.3rem;
+        }
+
+        .refined-image-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e1e8ed;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .comparison-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e1e8ed;
+        }
+
+        .comparison-item h4 {
+            margin: 0 0 15px 0;
+            color: #555;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .comparison-item img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .refined-image-preview {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
         }
     </style>
 </head>
@@ -256,309 +338,780 @@
     <div class="header">
         <h1>ChartGalaxy 信息图表生成器</h1>
     </div>
-    
+
     <div class="container">
         <div class="card">
             <div class="controls">
                 <div class="control-group">
-                    <label class="form-label">字体</label>
-                    <select class="form-select" id="fontSelector">
-                        <option value="Arial">Arial</option>
-                        <option value="Georgia">Georgia</option>
-                        <option value="Times New Roman">Times New Roman</option>
-                        <option value="Courier New">Courier New</option>
-                        <option value="Verdana">Verdana</option>
+                    <label class="form-label">画布比例</label>
+                    <select class="form-select" id="aspectRatioSelector">
+                        <option value="4:3" selected>4:3 (横向)</option>
+                        <option value="16:9">16:9 (宽屏)</option>
+                        <option value="1:1">1:1 (正方形)</option>
+                        <option value="3:4">3:4 (纵向)</option>
+                        <option value="9:16">9:16 (手机竖屏)</option>
+                        <option value="2:1">2:1 (超宽)</option>
+                        <option value="1:2">1:2 (超高)</option>
                     </select>
                 </div>
-                
+
                 <div class="control-group">
-                    <label class="form-label">字号</label>
-                    <input class="form-input" type="number" id="fontSizeInput" value="16" min="8" max="72">
+                    <label class="form-label">背景颜色</label>
+                    <div class="color-input-wrapper">
+                        <input class="form-input" type="color" id="bgColorPicker" value="#f5f3ef">
+                        <input class="form-input" type="text" id="bgColorText" value="#f5f3ef" maxlength="7" placeholder="#f5f3ef">
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label class="form-label">透明度: <span id="opacityValue">100</span>%</label>
+                    <input class="form-input" type="range" id="opacitySlider" min="0" max="100" value="100" step="1">
                 </div>
             </div>
         </div>
 
-        <button class="btn btn-primary" onclick="exportCanvasAsSVG()">导出图表</button>
-        
-        <div id="svg-container">
-            <div id="canvas">
-                <!-- 动态插入 SVG、图片等元素 -->
+        <div class="button-group">
+            <button class="btn btn-primary" onclick="exportAsSVG()">导出 SVG</button>
+            <button class="btn btn-primary" onclick="exportAsPNG()">导出 PNG</button>
+            <button class="btn btn-success" onclick="generateRefinedVersion()">生成精修版</button>
+            <button class="btn btn-secondary" onclick="undo()" id="undoBtn">↶ 撤销</button>
+            <button class="btn btn-secondary" onclick="redo()" id="redoBtn">↷ 重做</button>
+            <button class="btn btn-secondary" onclick="bringToFront()">置于顶层</button>
+            <button class="btn btn-secondary" onclick="sendToBack()">置于底层</button>
+            <button class="btn btn-danger" onclick="deleteSelected()">删除选中</button>
+        </div>
+
+        <div id="canvas-container">
+            <canvas id="fabricCanvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Refined image preview section (inline, below canvas) -->
+    <div class="container" id="refined-preview-section">
+        <div class="refined-preview-card">
+            <div class="refined-preview-header">
+                <h3>AI 精修版</h3>
+                <button class="btn btn-success" onclick="downloadRefinedImage()">下载精修版</button>
+            </div>
+            <div class="comparison-grid">
+                <div class="comparison-item">
+                    <h4>✨ 精修结果</h4>
+                    <img id="refinedImagePreview" class="refined-image-preview" src="" alt="精修版图片">
+                </div>
+                <div class="comparison-item">
+                    <h4>📋 参考图表</h4>
+                    <img id="referenceImagePreview" class="refined-image-preview" src="" alt="参考图表">
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- 引入 Interact.js -->
-<!-- <script src="/static/script/main/interact.min.js"></script> -->
-<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-<script>
-function applyFontSettings() {
-    const font = document.getElementById('fontSelector').value;
-    const size = document.getElementById('fontSizeInput').value + 'px';
-    document.querySelectorAll('.editable-text').forEach(el => {
-        el.style.fontFamily = font;
-        el.style.fontSize = size;
+    <!-- 引入 Fabric.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <script>
+// 全局变量
+let canvas;
+let currentBgColor = '#ffffff';
+
+// 撤销/重做历史记录
+let undoStack = [];
+let redoStack = [];
+let isUndoRedoAction = false;
+
+// 画布比例配置
+const aspectRatios = {
+    '4:3': { width: 800, height: 600 },
+    '16:9': { width: 960, height: 540 },
+    '1:1': { width: 700, height: 700 },
+    '3:4': { width: 600, height: 800 },
+    '9:16': { width: 450, height: 800 },
+    '2:1': { width: 1000, height: 500 },
+    '1:2': { width: 400, height: 800 }
+};
+
+// 初始化 Fabric Canvas
+function initCanvas(width, height) {
+    canvas = new fabric.Canvas('fabricCanvas', {
+        width: width,
+        height: height,
+        backgroundColor: currentBgColor,
+        selection: true,
+        preserveObjectStacking: true
     });
-}
 
-document.getElementById('fontSelector').addEventListener('change', applyFontSettings);
-document.getElementById('fontSizeInput').addEventListener('input', applyFontSettings);
+    // 设置选中样式
+    fabric.Object.prototype.set({
+        transparentCorners: false,
+        cornerColor: '#667eea',
+        cornerStrokeColor: '#667eea',
+        borderColor: '#667eea',
+        cornerSize: 10,
+        padding: 5,
+        cornerStyle: 'circle',
+        borderScaleFactor: 2
+    });
 
-// 使元素支持拖动 + 等比缩放
-function enableInteract(el) {
-    let isResizing = false;
-
-    // 拖动逻辑
-    interact('.resizable').draggable({
-        listeners: {
-            move(event) {
-                if (isResizing) return;  // 若正在缩放，则不触发拖动
-                const target = event.target;
-                const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
-                const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
-                target.style.transform = `translate(${x}px, ${y}px)`;
-                target.setAttribute('data-x', x);
-                target.setAttribute('data-y', y);
-            }
+    // 键盘事件 - 删除选中对象
+    document.addEventListener('keydown', function(e) {
+        if ((e.key === 'Delete' || e.key === 'Backspace') && canvas.getActiveObject()) {
+            deleteSelected();
+        }
+        // Ctrl+Z 撤销
+        if (e.ctrlKey && e.key === 'z') {
+            e.preventDefault();
+            undo();
+        }
+        // Ctrl+Y 或 Ctrl+Shift+Z 重做
+        if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+            e.preventDefault();
+            redo();
         }
     });
 
-    // 缩放逻辑
-    let aspectRatio = 1;
+    // 监听画布变化，保存历史记录
+    canvas.on('object:added', saveState);
+    canvas.on('object:modified', saveState);
+    canvas.on('object:removed', saveState);
 
-    interact('.resizable').resizable({
-        edges: { left: true, right: true, bottom: true, top: true },
-        listeners: {
-            start(event) {
-                isResizing = true;
-                event.target.classList.add('resizing');
-
-                // 记录初始比例
-                const rect = event.target.getBoundingClientRect();
-                aspectRatio = rect.width / rect.height;
-            },
-            move(event) {
-                const target = event.target;
-
-                // 用 height 推出 width，保持等比
-                const newHeight = event.rect.height;
-                const newWidth = newHeight * aspectRatio;
-
-                // 设置容器宽高
-                target.style.width = `${newWidth}px`;
-                target.style.height = `${newHeight}px`;
-
-                // 同步 SVG 或图片的宽高
-                const content = target.querySelector('svg, img');
-                if (content) {
-                    content.style.width = `${newWidth}px`;
-                    content.style.height = `${newHeight}px`;
-
-                    if (content.tagName.toLowerCase() === 'svg') {
-                        content.setAttribute('width', newWidth);
-                        content.setAttribute('height', newHeight);
-                    }
-                }
-            },
-            end(event) {
-                isResizing = false;
-                event.target.classList.remove('resizing');
-            }
-        }
+    // 当选中对象时，更新透明度滑块的值
+    canvas.on('selection:created', function(e) {
+        updateOpacitySlider(e.selected[0]);
     });
 
-    el.addEventListener('mousedown', () => {
-        document.querySelectorAll('.resizable').forEach(div => {
-                div.classList.remove('selected');
-        });
-        el.classList.add('selected');
+    canvas.on('selection:updated', function(e) {
+        updateOpacitySlider(e.selected[0]);
+    });
+
+    canvas.on('selection:cleared', function() {
+        // 清除选择时，重置透明度滑块为100%
+        document.getElementById('opacitySlider').value = 100;
+        document.getElementById('opacityValue').textContent = '100';
     });
 }
 
-// 插入图表或图片
-function insertIntoCanvas(type, content, id) {
-    const canvas = document.getElementById('canvas');
-    const wrapper = document.createElement('div');
-    wrapper.className = 'resizable';
-    wrapper.setAttribute('id', id);
-    wrapper.style.left = Math.random() * 200 + 'px';
-    wrapper.style.top = Math.random() * 100 + 'px';
-    wrapper.style.position = 'absolute'; // 确保定位正确
-    wrapper.style.backgroundColor = 'transparent'; 
+// 更新画布比例
+function updateCanvasAspectRatio(ratio) {
+    const config = aspectRatios[ratio] || aspectRatios['4:3'];
 
-    if (type === 'svg') {
-        wrapper.innerHTML = content;
-        const maxSize = 1000; // 最大尺寸限制
-        // 等待 SVG 渲染后获取其尺寸
-        setTimeout(() => {
-            const svg = wrapper.querySelector('svg');
-            if (svg) {
-                // 如果 SVG 有固定 width/height，使用它们
-                const svgWidth = svg.width.baseVal.value || svg.clientWidth;
-                const svgHeight = svg.height.baseVal.value || svg.clientHeight;
-                
-                const scale = Math.min(maxSize / svgWidth, maxSize / svgHeight, 1); // 计算缩放比例，不超过1
-                wrapper.style.width = `${svgWidth * scale}px`;
-                wrapper.style.height = `${svgHeight * scale}px`;
-                svg.setAttribute('viewBox', `0 0 ${svgWidth * scale} ${svgHeight * scale}`);
-                // console.info(svg)
-            }
-        }, 0);
-
-    } else {
-        const img = document.createElement('img');
-        img.src = content;
-        const maxSize = 300; // 最大尺寸限制
-        img.onload = () => {
-            // 图片加载完成后设置容器尺寸
-            const scale = Math.min(maxSize / img.naturalWidth, maxSize / img.naturalHeight, 1); // 计算缩放比例，不超过1
-            wrapper.style.width = `${img.naturalWidth * scale}px`;
-            wrapper.style.height = `${img.naturalHeight * scale}px`;
-            console.info(scale)
-            console.info(maxSize / img.naturalWidth)
-            console.info(maxSize / img.naturalHeight)
-        };
-        wrapper.appendChild(img);
-    }
-
-    canvas.appendChild(wrapper);
-    enableInteract(wrapper); // 启用交互
+    canvas.setWidth(config.width);
+    canvas.setHeight(config.height);
+    canvas.renderAll();
 }
 
-
-function getTranslatedPosition(el) {
-    const rect = el.getBoundingClientRect();
-    const parentRect = el.offsetParent?.getBoundingClientRect() || { left: 0, top: 0 };
-
-    // 计算相对 canvas 的偏移位置（包括 transform）
-    return {
-        x: rect.left - parentRect.left,
-        y: rect.top - parentRect.top
-    };
-}
-
-
-function loadIMG(chartType, data, title, pictogram) {
-    const bg_color = "#f5f3ef"; // 设置背景颜色
-    if (!chartType || !data) {
-        alert("请确保已选择数据源和图表类型");
+// 更新背景颜色
+function updateBgColor(color) {
+    if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
         return;
     }
 
-    const canvas = document.getElementById('canvas');
-    canvas.innerHTML = `<div class="loading"><div class="loading-spinner"></div><span>正在加载图表...</span></div>`;
+    currentBgColor = color;
+    canvas.setBackgroundColor(color, canvas.renderAll.bind(canvas));
 
-    const svgURL = `/authoring/chart?charttype=${encodeURIComponent(chartType)}&data=${encodeURIComponent(data)}&title=${encodeURIComponent(title)}&pictogram=${encodeURIComponent(pictogram)}`;
-
-    fetch(svgURL)
-        .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();  // 👈 改为解析 JSON 响应
-        })
-        .then(response => {
-            const { svg, img1, img2 } = response;
-
-            canvas.innerHTML = '';
-            insertIntoCanvas('svg', svg, 'svgChart');
-            insertIntoCanvas('img', img1, 'img1');
-            insertIntoCanvas('img', img2, 'img2');
-            canvas.style.backgroundColor = bg_color;
-        })
-        .catch(err => {
-            canvas.innerHTML = `<div class="error-message">加载图表失败: ${err.message}</div>`;
-            console.error("加载图表失败:", err);
-        });
+    // 同步两个输入控件
+    document.getElementById('bgColorPicker').value = color;
+    document.getElementById('bgColorText').value = color;
 }
 
-function exportCanvasAsSVG() {
-    const canvas = document.getElementById('canvas');
-    const svgNS = "http://www.w3.org/2000/svg";
-    const bg_color = "#f5f3ef"; // 设置背景颜色
+// 添加图片到画布
+function addImageToCanvas(imageUrl, options = {}) {
+    return new Promise((resolve, reject) => {
+        fabric.Image.fromURL(imageUrl, function(img) {
+            if (!img) {
+                reject(new Error('Failed to load image'));
+                return;
+            }
 
-    // 获取所有 resizable 元素的边界，用于确定 SVG 尺寸
-    const resizables = canvas.querySelectorAll('.resizable');
-    let maxRight = 0, maxBottom = 0;
+            // 计算缩放比例，使图片适应画布
+            const maxWidth = options.maxWidth || 300;
+            const maxHeight = options.maxHeight || 300;
+            const scale = Math.min(
+                maxWidth / img.width,
+                maxHeight / img.height,
+                1
+            );
 
-    resizables.forEach(el => {
-        const elRight = el.offsetLeft + el.offsetWidth;
-        const elBottom = el.offsetTop + el.offsetHeight;
-        if (elRight > maxRight) maxRight = elRight;
-        if (elBottom > maxBottom) maxBottom = elBottom;
+            img.set({
+                left: options.left || Math.random() * (canvas.width - img.width * scale),
+                top: options.top || Math.random() * (canvas.height - img.height * scale),
+                scaleX: scale,
+                scaleY: scale,
+                lockUniScaling: true  // 锁定等比缩放
+            });
+
+            canvas.add(img);
+            canvas.renderAll();
+            resolve(img);
+        }, { crossOrigin: 'anonymous' });
     });
+}
 
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("xmlns", svgNS);
-    svg.setAttribute("width", maxRight);
-    svg.setAttribute("height", maxBottom);
-    svg.setAttribute("viewBox", `0 0 ${maxRight} ${maxBottom}`);
+// 添加 SVG 到画布（使用图片方式加载以保证兼容性）
+function addSVGToCanvas(svgString, options = {}) {
+    return new Promise((resolve, reject) => {
+        // 方法1: 尝试将 SVG 转换为 data URL 作为图片加载
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const svgUrl = URL.createObjectURL(svgBlob);
 
-    // 添加背景矩形，填充 bg_color
-    const backgroundRect = document.createElementNS(svgNS, "rect");
-    backgroundRect.setAttribute("x", 0);
-    backgroundRect.setAttribute("y", 0);
-    backgroundRect.setAttribute("width", maxRight);
-    backgroundRect.setAttribute("height", maxBottom);
-    backgroundRect.setAttribute("fill", bg_color);  // 背景颜色
-    svg.appendChild(backgroundRect);
-    
-    // 遍历每个元素并复制到 SVG 中
-    resizables.forEach(el => {
-        const { x: offsetX, y: offsetY } = getTranslatedPosition(el);
+        fabric.Image.fromURL(svgUrl, function(img) {
+            URL.revokeObjectURL(svgUrl);
 
-        const svgInner = el.querySelector('svg');
-        if (svgInner) {
-            const clone = svgInner.cloneNode(true);
-            const wrapper = document.createElementNS(svgNS, "g");
-            wrapper.setAttribute("transform", `translate(${offsetX}, ${offsetY})`);
-            wrapper.appendChild(clone);
-            svg.appendChild(wrapper);
-        }
+            if (!img || !img.width || !img.height) {
+                console.warn('Image load failed, trying SVG parse method...');
+                // 回退到 SVG 解析方式
+                addSVGToCanvasFallback(svgString, options).then(resolve).catch(reject);
+                return;
+            }
 
-        const img = el.querySelector('img');
-        if (img) {
-            const imageEl = document.createElementNS(svgNS, "image");
-            imageEl.setAttributeNS(null, 'href', img.src);
-            imageEl.setAttribute('x', offsetX);
-            imageEl.setAttribute('y', offsetY);
-            imageEl.setAttribute('width', el.offsetWidth);
-            imageEl.setAttribute('height', el.offsetHeight);
-            svg.appendChild(imageEl);
-        }
+            // 计算缩放比例
+            const maxWidth = options.maxWidth || canvas.width * 0.8;
+            const maxHeight = options.maxHeight || canvas.height * 0.8;
+            const scale = Math.min(
+                maxWidth / img.width,
+                maxHeight / img.height,
+                1
+            );
 
-        // 更新最大宽高（用于 SVG 尺寸）
-        const right = offsetX + el.offsetWidth;
-        const bottom = offsetY + el.offsetHeight;
-        if (right > maxRight) maxRight = right;
-        if (bottom > maxBottom) maxBottom = bottom;
+            img.set({
+                left: options.left || (canvas.width - img.width * scale) / 2,
+                top: options.top || (canvas.height - img.height * scale) / 2,
+                scaleX: scale,
+                scaleY: scale,
+                lockUniScaling: true
+            });
+
+            canvas.add(img);
+            canvas.renderAll();
+            resolve(img);
+        }, { crossOrigin: 'anonymous' });
     });
+}
 
-    // 导出逻辑
-    const serializer = new XMLSerializer();
-    const svgStr = serializer.serializeToString(svg);
-    const blob = new Blob([svgStr], { type: "image/svg+xml;charset=utf-8" });
+// SVG 解析方式（回退方案）
+function addSVGToCanvasFallback(svgString, options = {}) {
+    return new Promise((resolve, reject) => {
+        fabric.loadSVGFromString(svgString, function(objects, svgOptions) {
+            if (!objects || objects.length === 0) {
+                reject(new Error('Failed to load SVG'));
+                return;
+            }
+
+            const svgGroup = fabric.util.groupSVGElements(objects, svgOptions);
+
+            // 计算缩放比例
+            const maxWidth = options.maxWidth || canvas.width * 0.8;
+            const maxHeight = options.maxHeight || canvas.height * 0.8;
+            const scale = Math.min(
+                maxWidth / svgGroup.width,
+                maxHeight / svgGroup.height,
+                1
+            );
+
+            svgGroup.set({
+                left: options.left || (canvas.width - svgGroup.width * scale) / 2,
+                top: options.top || (canvas.height - svgGroup.height * scale) / 2,
+                scaleX: scale,
+                scaleY: scale,
+                lockUniScaling: true
+            });
+
+            canvas.add(svgGroup);
+            canvas.renderAll();
+            resolve(svgGroup);
+        });
+    });
+}
+
+// 保存画布状态到历史记录
+function saveState() {
+    if (isUndoRedoAction) {
+        // 如果是撤销/重做操作触发的变化，不保存状态
+        return;
+    }
+
+    // 保存当前画布状态
+    const state = JSON.stringify(canvas.toJSON());
+    undoStack.push(state);
+
+    // 限制历史记录数量（最多50条）
+    if (undoStack.length > 50) {
+        undoStack.shift();
+    }
+
+    // 清空重做栈
+    redoStack = [];
+
+    // 更新按钮状态
+    updateUndoRedoButtons();
+}
+
+// 撤销
+function undo() {
+    if (undoStack.length === 0) {
+        return;
+    }
+
+    // 保存当前状态到重做栈
+    const currentState = JSON.stringify(canvas.toJSON());
+    redoStack.push(currentState);
+
+    // 从撤销栈中取出上一个状态
+    const previousState = undoStack.pop();
+
+    // 标记为撤销操作，避免触发saveState
+    isUndoRedoAction = true;
+
+    // 恢复画布状态
+    canvas.loadFromJSON(previousState, function() {
+        canvas.renderAll();
+        isUndoRedoAction = false;
+        updateUndoRedoButtons();
+    });
+}
+
+// 重做
+function redo() {
+    if (redoStack.length === 0) {
+        return;
+    }
+
+    // 保存当前状态到撤销栈
+    const currentState = JSON.stringify(canvas.toJSON());
+    undoStack.push(currentState);
+
+    // 从重做栈中取出状态
+    const nextState = redoStack.pop();
+
+    // 标记为重做操作，避免触发saveState
+    isUndoRedoAction = true;
+
+    // 恢复画布状态
+    canvas.loadFromJSON(nextState, function() {
+        canvas.renderAll();
+        isUndoRedoAction = false;
+        updateUndoRedoButtons();
+    });
+}
+
+// 更新撤销/重做按钮状态
+function updateUndoRedoButtons() {
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
+
+    if (undoBtn) {
+        undoBtn.disabled = undoStack.length === 0;
+    }
+    if (redoBtn) {
+        redoBtn.disabled = redoStack.length === 0;
+    }
+}
+
+// 删除选中对象
+function deleteSelected() {
+    const activeObjects = canvas.getActiveObjects();
+    if (activeObjects.length > 0) {
+        activeObjects.forEach(obj => canvas.remove(obj));
+        canvas.discardActiveObject();
+        canvas.renderAll();
+    }
+}
+
+// 置于顶层
+function bringToFront() {
+    const activeObject = canvas.getActiveObject();
+    if (activeObject) {
+        canvas.bringToFront(activeObject);
+        canvas.renderAll();
+    }
+}
+
+// 置于底层
+function sendToBack() {
+    const activeObject = canvas.getActiveObject();
+    if (activeObject) {
+        canvas.sendToBack(activeObject);
+        canvas.renderAll();
+    }
+}
+
+// 导出为 SVG
+function exportAsSVG() {
+    const svgData = canvas.toSVG();
+    const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = url;
-    link.download = "infographic.svg";
+    link.download = 'infographic.svg';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 }
 
+// 导出为 PNG
+function exportAsPNG() {
+    const dataURL = canvas.toDataURL({
+        format: 'png',
+        quality: 1,
+        multiplier: 2  // 2x 分辨率
+    });
+    const link = document.createElement('a');
+    link.href = dataURL;
+    link.download = 'infographic.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 
-// 初始化加载
+// 生成精修版 (使用 Gemini AI)
+async function generateRefinedVersion() {
+    try {
+        // 显示加载提示
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-overlay';
+        loadingDiv.innerHTML = `
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <span id="refinement-status">正在使用 AI 精修信息图表...</span>
+            </div>
+        `;
+        loadingDiv.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        `;
+        document.body.appendChild(loadingDiv);
+
+        // 使用现有的导出 PNG 功能获取 PNG base64 数据
+        const pngDataURL = canvas.toDataURL({
+            format: 'png',
+            quality: 1,
+            multiplier: 2  // 2x 分辨率
+        });
+
+        // 发送到后端进行处理
+        const response = await fetch('/api/export_final', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                png_base64: pngDataURL
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'started') {
+            // 轮询检查状态
+            await pollRefinementStatus(loadingDiv);
+        } else {
+            throw new Error(result.error || '生成失败');
+        }
+
+    } catch (error) {
+        console.error('生成精修版失败:', error);
+        alert('生成精修版失败: ' + error.message);
+
+        // 移除加载提示
+        const loadingDiv = document.querySelector('.loading-overlay');
+        if (loadingDiv) {
+            document.body.removeChild(loadingDiv);
+        }
+    }
+}
+
+// 轮询精修状态
+async function pollRefinementStatus(loadingDiv) {
+    const maxAttempts = 120; // 最多等待2分钟
+    let attempts = 0;
+
+    const statusText = document.getElementById('refinement-status');
+
+    while (attempts < maxAttempts) {
+        try {
+            const response = await fetch('/api/status');
+            const status = await response.json();
+
+            // 更新状态文本
+            if (status.progress && statusText) {
+                statusText.textContent = "";
+            }
+
+            if (status.step === 'final_export' && status.completed) {
+                if (status.status === 'completed') {
+                    // 移除加载提示
+                    document.body.removeChild(loadingDiv);
+
+                    // 显示精修后的图片预览（内联显示在下方）
+                    showRefinedImagePreview();
+
+                    // 滚动到精修版预览区域
+                    document.getElementById('refined-preview-section').scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+
+                    return;
+                } else if (status.status === 'error') {
+                    throw new Error(status.progress || '精修失败');
+                }
+            }
+
+        } catch (error) {
+            console.error('检查状态失败:', error);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        attempts++;
+    }
+
+    // 超时
+    document.body.removeChild(loadingDiv);
+    throw new Error('精修超时，请重试');
+}
+
+// 显示精修后的图片预览（内联显示）
+async function showRefinedImagePreview() {
+    const previewSection = document.getElementById('refined-preview-section');
+    const imgPreview = document.getElementById('refinedImagePreview');
+    const refPreview = document.getElementById('referenceImagePreview');
+
+    // 设置图片源为后端提供的精修图片
+    imgPreview.src = '/api/download_final?' + new Date().getTime(); // 添加时间戳防止缓存
+
+    // 获取并显示参考图
+    try {
+        const response = await fetch('/api/status');
+        const status = await response.json();
+        const referenceImage = status.selected_reference;
+
+        if (referenceImage) {
+            // 使用相对路径或完整URL
+            refPreview.src = '/' + referenceImage + '?' + new Date().getTime();
+        } else {
+            // 如果没有参考图，隐藏参考图容器
+            refPreview.parentElement.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('获取参考图失败:', error);
+        refPreview.parentElement.style.display = 'none';
+    }
+
+    // 显示预览区域
+    previewSection.classList.add('show');
+}
+
+// 下载精修后的图片
+function downloadRefinedImage() {
+    const link = document.createElement('a');
+    link.href = '/api/download_final';
+    link.download = 'infographic_refined.jpg';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+
+// 加载图表数据
+async function loadChartData(chartType, data, title, pictogram) {
+    if (!chartType || !data) {
+        alert("请确保已选择数据源和图表类型");
+        return;
+    }
+
+    // 显示加载状态
+    const container = document.getElementById('canvas-container');
+    const canvasEl = document.getElementById('fabricCanvas');
+    canvasEl.style.display = 'none';
+
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'loading';
+    loadingDiv.innerHTML = '<div class="loading-spinner"></div><span>正在加载图表...</span>';
+    container.appendChild(loadingDiv);
+
+    try {
+        const svgURL = `/authoring/chart?charttype=${encodeURIComponent(chartType)}&data=${encodeURIComponent(data)}&title=${encodeURIComponent(title)}&pictogram=${encodeURIComponent(pictogram)}`;
+
+        const response = await fetch(svgURL);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const result = await response.json();
+        const { chart, img1, img2, bg_color, layout } = result;
+
+        // 清空画布
+        canvas.clear();
+
+        // 设置背景色
+        if (bg_color) {
+            updateBgColor(bg_color);
+        } else {
+            canvas.setBackgroundColor(currentBgColor, canvas.renderAll.bind(canvas));
+        }
+
+        // 如果有布局信息，使用布局信息来设置位置和大小
+        let chartOptions, titleOptions, imageOptions;
+
+        if (layout && layout.chart && layout.title && layout.image) {
+            console.log('使用参考图布局信息:', layout);
+
+            // 根据canvas的宽高和参考图的比例计算实际位置和大小
+            chartOptions = {
+                left: layout.chart.x * canvas.width,
+                top: layout.chart.y * canvas.height,
+                maxWidth: layout.chart.width * canvas.width,
+                maxHeight: layout.chart.height * canvas.height
+            };
+
+            titleOptions = {
+                left: layout.title.x * canvas.width,
+                top: layout.title.y * canvas.height,
+                maxWidth: layout.title.width * canvas.width,
+                maxHeight: layout.title.height * canvas.height
+            };
+
+            imageOptions = {
+                left: layout.image.x * canvas.width,
+                top: layout.image.y * canvas.height,
+                maxWidth: layout.image.width * canvas.width,
+                maxHeight: layout.image.height * canvas.height
+            };
+        } else {
+            // 使用默认布局
+            console.log('使用默认布局');
+            chartOptions = {
+                maxWidth: canvas.width * 0.9,
+                maxHeight: canvas.height * 0.7,
+                left: canvas.width * 0.05,
+                top: canvas.height * 0.15
+            };
+
+            titleOptions = {
+                maxWidth: 400,
+                maxHeight: 150,
+                left: 20,
+                top: 20
+            };
+
+            imageOptions = {
+                maxWidth: 200,
+                maxHeight: 200,
+                left: canvas.width - 220,
+                top: canvas.height - 220
+            };
+        }
+
+        // 添加图表图片（现在是 PNG 而不是 SVG）
+        if (chart) {
+            await addImageToCanvas(chart, chartOptions);
+        }
+
+        // 添加图片1 (标题)
+        if (img1) {
+            await addImageToCanvas(img1, titleOptions);
+        }
+
+        // 添加图片2 (配图)
+        if (img2) {
+            await addImageToCanvas(img2, imageOptions);
+        }
+
+        // 保存初始状态到撤销栈
+        setTimeout(() => {
+            saveState();
+        }, 100);
+
+    } catch (err) {
+        console.error("加载图表失败:", err);
+
+        // 显示错误信息
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.textContent = `加载图表失败: ${err.message}`;
+        container.appendChild(errorDiv);
+    } finally {
+        // 移除加载状态
+        if (loadingDiv.parentNode) {
+            loadingDiv.parentNode.removeChild(loadingDiv);
+        }
+        canvasEl.style.display = 'block';
+    }
+}
+
+// 事件监听器
+document.getElementById('aspectRatioSelector').addEventListener('change', function() {
+    updateCanvasAspectRatio(this.value);
+});
+
+document.getElementById('bgColorPicker').addEventListener('input', function() {
+    updateBgColor(this.value);
+});
+
+document.getElementById('bgColorText').addEventListener('input', function() {
+    let value = this.value;
+    if (!value.startsWith('#')) {
+        value = '#' + value;
+    }
+    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+        updateBgColor(value);
+    }
+});
+
+document.getElementById('bgColorText').addEventListener('blur', function() {
+    this.value = currentBgColor;
+});
+
+// 透明度控制
+document.getElementById('opacitySlider').addEventListener('input', function() {
+    const opacityPercent = this.value;
+    const opacityValue = opacityPercent / 100;
+
+    // 更新显示的透明度值
+    document.getElementById('opacityValue').textContent = opacityPercent;
+
+    // 获取当前选中的对象
+    const activeObject = canvas.getActiveObject();
+    if (activeObject) {
+        // 设置选中对象的透明度
+        activeObject.set('opacity', opacityValue);
+        canvas.renderAll();
+    }
+});
+
+// 更新透明度滑块的辅助函数
+function updateOpacitySlider(obj) {
+    if (obj) {
+        const opacityPercent = Math.round((obj.opacity || 1) * 100);
+        document.getElementById('opacitySlider').value = opacityPercent;
+        document.getElementById('opacityValue').textContent = opacityPercent;
+    }
+}
+
+// 初始化
 window.addEventListener('DOMContentLoaded', () => {
     const initialChartType = "{{ charttype | safe }}";
     const initialData = "{{ data | safe }}";
     const initialTitle = "{{ title | safe }}";
-    const initialPictogram= "{{ pictogram | safe }}";
+    const initialPictogram = "{{ pictogram | safe }}";
+
+    // 初始化画布
+    const config = aspectRatios['4:3'];
+    initCanvas(config.width, config.height);
+
+    // 初始化撤销/重做按钮状态
+    updateUndoRedoButtons();
+
+    // 加载数据
     if (initialChartType && initialData) {
-        loadIMG(initialChartType, initialData, initialTitle, initialPictogram);
+        loadChartData(initialChartType, initialData, initialTitle, initialPictogram);
     }
 });
-
-</script>
-
-
+    </script>
 </body>
 </html>

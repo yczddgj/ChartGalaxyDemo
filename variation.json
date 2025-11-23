@@ -4,16 +4,18 @@
     "small_multiple_area_plain_chart_01": 38
   },
   "horizontal group bar chart": {
-    "total_count": 134,
-    "horizontal_group_bar_chart_03": 91,
-    "horizontal_group_bar_chart_13": 19,
-    "horizontal_group_bar_chart_06": 9,
-    "horizontal_group_bar_chart_03_hand": 7,
-    "horizontal_group_bar_chart_16": 8
+    "total_count": 277,
+    "horizontal_group_bar_chart_03": 108,
+    "horizontal_group_bar_chart_13": 39,
+    "horizontal_group_bar_chart_06": 31,
+    "horizontal_group_bar_chart_03_hand": 22,
+    "horizontal_group_bar_chart_16": 56,
+    "horizontal_group_bar_plain_chart_01": 15,
+    "horizontal_group_bar_plain_chart_02": 6
   },
   "group dot bar chart": {
-    "total_count": 2,
-    "horizontal_group_dot_bar_chart_0": 2
+    "total_count": 14,
+    "horizontal_group_dot_bar_chart_0": 14
   },
   "small multiples of pie charts": {
     "total_count": 9,
@@ -24,8 +26,8 @@
     "layered_spline_area_plain_chart_01": 4
   },
   "diverging bar chart": {
-    "total_count": 16,
-    "diverging_bar_plain_chart_06": 10,
+    "total_count": 18,
+    "diverging_bar_plain_chart_06": 12,
     "diverging_bar_plain_chart_05": 6
   },
   "radial range area chart": {
@@ -38,12 +40,12 @@
     "multiple_area_chart_01": 58
   },
   "multiple line graph": {
-    "total_count": 9,
-    "multiple_line_graph_10": 5,
-    "multiple_line_graph_07": 1,
-    "multiple_line_graph_12": 1,
-    "multiple_line_graph_08": 1,
-    "multiple_line_graph_01": 1
+    "total_count": 14,
+    "multiple_line_graph_10": 6,
+    "multiple_line_graph_07": 2,
+    "multiple_line_graph_12": 2,
+    "multiple_line_graph_08": 2,
+    "multiple_line_graph_01": 2
   },
   "vertical grouped bar chart": {
     "total_count": 39,
@@ -56,9 +58,10 @@
     "range_area_chart_01": 1
   },
   "multiple radar spline chart": {
-    "total_count": 28,
-    "multiple_radar_spline_chart_02": 2,
-    "multiple_radar_spline_chart_01": 26
+    "total_count": 30,
+    "multiple_radar_spline_chart_02": 3,
+    "multiple_radar_spline_chart_01": 26,
+    "multiple_radar_spline_chart_03": 1
   },
   "small multiple stepped line graph": {
     "total_count": 4,
@@ -71,29 +74,33 @@
     "group_radial_bar_chart_02": 2
   },
   "multiple pie chart": {
-    "total_count": 822,
-    "multiple_pie_chart_02": 330,
-    "multiple_pie_chart_03": 165,
-    "multiple_pie_chart_04": 165,
-    "multiple_pie_chart_05": 162
+    "total_count": 903,
+    "multiple_pie_chart_02": 346,
+    "multiple_pie_chart_03": 176,
+    "multiple_pie_chart_04": 198,
+    "multiple_pie_chart_05": 183
   },
   "dumbbell plot": {
     "total_count": 141,
     "dumbbell_plot_plain_chart_01": 141
   },
   "vertical group bar chart": {
-    "total_count": 23,
-    "vertical_group_bar_chart_5": 9,
-    "vertical_group_bar_chart_13": 8,
-    "vertical_group_bar_plain_chart_01": 6
+    "total_count": 35,
+    "vertical_group_bar_chart_5": 12,
+    "vertical_group_bar_chart_13": 14,
+    "vertical_group_bar_plain_chart_01": 9
   },
   "horizontal diverging bar chart": {
-    "total_count": 1,
-    "horizontal_diverging_bar_chart_11": 1
+    "total_count": 21,
+    "horizontal_diverging_bar_chart_11": 7,
+    "horizontal_diverging_bar_chart_12": 5,
+    "horizontal_diverging_bar_chart_05": 3,
+    "horizontal_diverging_bar_chart_07": 6
   },
   "radial bar chart": {
-    "total_count": 2,
-    "radial_bar_chart_02": 2
+    "total_count": 3,
+    "radial_bar_chart_02": 2,
+    "radial_bar_chart_05": 1
   },
   "stacked radial bar chart": {
     "total_count": 2,
@@ -104,24 +111,26 @@
     "stacked_circular_bar_chart_03": 11
   },
   "vertical bar chart": {
-    "total_count": 10,
-    "vertical_bar_chart_07": 2,
+    "total_count": 26,
+    "vertical_bar_chart_07": 5,
     "vertical_bar_chart_17": 1,
     "vertical_bar_chart_17_01": 1,
     "vertical_bar_chart_18_01": 1,
     "vertical_bar_chart_18": 1,
-    "vertical_bar_chart_20": 1,
-    "vertical_bar_chart_07_2": 1,
-    "vertical_bar_chart_09_2": 1,
-    "vertical_bar_chart_08_2": 1
+    "vertical_bar_chart_20": 4,
+    "vertical_bar_chart_07_2": 4,
+    "vertical_bar_chart_09_2": 4,
+    "vertical_bar_chart_08_2": 4,
+    "vertical_bar_plain_chart_02": 1
   },
   "semicircle donut chart": {
-    "total_count": 5,
-    "semicircle_donut_chart_04_d3": 1,
-    "semicircle_donut_chart_00": 1,
-    "semicircle_donut_chart_06_d3": 1,
-    "semicircle_donut_chart_05_d3": 1,
-    "semicircle_donut_chart_03_d3": 1
+    "total_count": 15,
+    "semicircle_donut_chart_04_d3": 2,
+    "semicircle_donut_chart_00": 2,
+    "semicircle_donut_chart_06_d3": 2,
+    "semicircle_donut_chart_05_d3": 5,
+    "semicircle_donut_chart_03_d3": 2,
+    "semicircle_donut_plain_chart_01": 2
   },
   "circular stacked bar chart": {
     "total_count": 3,
@@ -140,19 +149,23 @@
     "slope_chart_plain_chart_01": 2
   },
   "circular bar chart": {
-    "total_count": 5,
+    "total_count": 8,
     "circular_bar_chart_03": 1,
-    "circular_bar_chart_01": 1,
+    "circular_bar_chart_01": 2,
     "circular_bar_chart_icons_02": 1,
-    "circular_bar_chart_icons_01": 2
+    "circular_bar_chart_icons_01": 2,
+    "circular_bar_chart_04": 1,
+    "circular_bar_plain_chart_02": 1
   },
   "pie chart": {
-    "total_count": 15,
-    "pie_chart_01": 3,
+    "total_count": 21,
+    "pie_chart_01": 4,
     "pie_chart_03": 3,
     "pie_chart_03_d3": 3,
-    "pie_chart_01_hand": 3,
-    "pie_chart_02": 3
+    "pie_chart_01_hand": 4,
+    "pie_chart_02": 4,
+    "pie_chart_00": 1,
+    "pie_chart_01_d3": 2
   },
   "alluvial diagram": {
     "total_count": 2,
@@ -163,5 +176,104 @@
     "total_count": 2,
     "small_multiple_area_chart_02": 1,
     "small_multiple_area_chart_01": 1
+  },
+  "horizontal bar chart": {
+    "total_count": 15,
+    "horizontal_bar_chart_1": 1,
+    "horizontal_bar_chart_33": 1,
+    "horizontal_bar_chart_2": 2,
+    "horizontal_bar_chart_5": 2,
+    "horizontal_bar_chart_2_hand": 2,
+    "horizontal_bar_chart_29": 2,
+    "horizontal_bar_chart_8": 2,
+    "horizontal_bar_chart_5_hand": 1,
+    "horizontal_bar_plain_chart_06": 1,
+    "horizontal_bar_chart_30": 1
+  },
+  "grouped scatterplot": {
+    "total_count": 29,
+    "grouped_scatterplot_plain_chart_01": 9,
+    "grouped_scatterplot_plain_chart_02": 9,
+    "grouped_scatterplot_plain_chart_03": 5,
+    "grouped_scatterplot_05": 2,
+    "grouped_scatterplot_04": 2,
+    "grouped_scatterplot_01": 1,
+    "grouped_scatterplot_03": 1
+  },
+  "rose chart": {
+    "total_count": 4,
+    "rose_chart_new_00_hand": 1,
+    "rose_chart_new_00": 1,
+    "rose_plain_chart_01": 2
+  },
+  "donut chart": {
+    "total_count": 12,
+    "donut_chart_00": 1,
+    "donut_chart_03_d3": 1,
+    "donut_chart_00_hand": 2,
+    "donut_chart_04_hand": 3,
+    "donut_chart_02": 2,
+    "donut_chart_02_hand": 2,
+    "donut_chart_icons_01": 1
+  },
+  "range chart": {
+    "total_count": 71,
+    "vertical_range_chart_01": 42,
+    "horizontal_range_bar_chart_01": 29
+  },
+  "lollipop chart": {
+    "total_count": 11,
+    "lollipop_plain_chart_01": 3,
+    "lollipop_icon_chart_01": 4,
+    "horizontal_lollipop_chart_02": 3,
+    "lollipop_plain_chart_02": 1
+  },
+  "horizontal dot bar chart": {
+    "total_count": 8,
+    "horizontal_dot_bar_plain_chart_01": 1,
+    "horizontal_dot_bar_chart_02": 4,
+    "horizontal_dot_bar_plain_chart_02": 2,
+    "horizontal_dot_bar_chart_01": 1
+  },
+  "vertical dot bar chart": {
+    "total_count": 1,
+    "vertical_dot_bar_plain_chart_01": 1
+  },
+  "proportional area chart (triangle)": {
+    "total_count": 9,
+    "proportional_area_chart_triangle_08": 4,
+    "proportional_area_chart_triangle_05": 2,
+    "proportional_area_chart_triangle_09": 2,
+    "proportional_area_chart_triangle_04": 1
+  },
+  "proportional area chart (circle)": {
+    "total_count": 1,
+    "proportional_area_chart_circle_11": 1
+  },
+  "multiple radar chart": {
+    "total_count": 4,
+    "multiple_radar_chart_01": 3,
+    "multiple_radar_chart_03": 1
+  },
+  "multiple gauge chart": {
+    "total_count": 10,
+    "multiple_gauge_chart_03": 2,
+    "gauge_chart_01": 3,
+    "multiple_gauge_chart_02": 2,
+    "multiple_gauge_chart_01": 3
+  },
+  "multiple semi donut chart": {
+    "total_count": 2,
+    "multiple_semi_donut_chart_01": 1,
+    "multiple_semi_donut_chart_02": 1
+  },
+  "multiple rose chart": {
+    "total_count": 2,
+    "multiple_rose_chart_02": 1,
+    "multiple_rose_chart_01": 1
+  },
+  "semicircle pie chart": {
+    "total_count": 1,
+    "semicircle_pie_chart_01_d3": 1
   }
 }

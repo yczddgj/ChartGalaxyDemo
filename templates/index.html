@@ -206,6 +206,41 @@
             margin-top: 20px;
         }
 
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .comparison-item {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e1e8ed;
+        }
+
+        .comparison-item h4 {
+            margin: 0 0 15px 0;
+            color: #555;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+
+        .comparison-item img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .hidden {
             display: none;
         }
@@ -242,6 +277,14 @@
             overflow: visible;
         }
 
+        /* 新的统一网格布局 */
+        .reference-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
         .main-reference {
             height: 100%;
             min-height: 0;
@@ -265,8 +308,7 @@
             border: 3px solid transparent;
             background: #f8f9ff;
             padding: 8px;
-            height: 100%;
-            min-height: 0;
+            height: 280px;
             box-sizing: border-box;
         }
 
@@ -292,6 +334,60 @@
             padding: 6px;
             box-sizing: border-box;
             overflow: hidden;
+        }
+
+        /* AI直接生成特殊样式 */
+        .ai-direct-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 3px solid transparent;
+        }
+
+        .ai-direct-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .ai-direct-item.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+
+        .ai-direct-container {
+            background: transparent;
+            padding: 20px;
+        }
+
+        .ai-direct-content {
+            text-align: center;
+            color: white;
+        }
+
+        .ai-direct-icon {
+            font-size: 60px;
+            margin-bottom: 10px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .ai-direct-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .ai-direct-desc {
+            font-size: 13px;
+            opacity: 0.9;
+            line-height: 1.4;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
         }
 
         .reference-image {
@@ -423,6 +519,101 @@
             font-size: 1.2rem;
             font-weight: 700;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Chart Type 和 Variation 选择容器样式 */
+        .chart-type-container,
+        .variation-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-type-item,
+        .variation-item {
+            position: relative;
+            cursor: pointer;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            background: #f8f9ff;
+            padding: 8px;
+            height: 280px;  /* 增加高度以显示预览图 */
+            box-sizing: border-box;
+        }
+
+        .chart-type-item:hover,
+        .variation-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .chart-type-item.selected,
+        .variation-item.selected {
+            border-color: #667eea;
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+            background: #f0f2ff;
+        }
+
+        .chart-type-image-container,
+        .variation-image-container {
+            width: 100%;
+            height: calc(100% - 40px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: white;
+            border-radius: 8px;
+            padding: 6px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .chart-type-image,
+        .variation-image {
+            max-width: 100%;
+            max-height: 100%;
+            height: auto;
+            width: auto;
+            object-fit: contain;
+            border-radius: 6px;
+            display: block;
+        }
+
+        .chart-type-label,
+        .variation-label {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Variation 名称显示样式（无预览图模式） */
+        .variation-name-container,
+        .chart-type-name-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .variation-name,
+        .chart-type-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+            word-wrap: break-word;
         }
 
         /* 单张图片选择容器样式 */
@@ -559,10 +750,48 @@
                         </table>
                     </div>
                     <div class="text-center" style="margin-top: 25px;">
-                        <button class="btn btn-primary" id="nextStepBtn" onclick="findReferenceImages()">
+                        <button class="btn btn-primary" id="nextStepBtn" onclick="startChartTypeSelection()">
                             ➡️ 下一步
                         </button>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="chartTypeCard" class="card hidden">
+            <div class="card-header">
+                📊 选择图表类型
+            </div>
+            <div class="card-body">
+                <div class="chart-type-container" id="chartTypeContainer">
+                    <!-- Chart types will be dynamically inserted here -->
+                </div>
+                <div class="text-center" style="margin-top: 30px; display: flex; justify-content: center; gap: 15px;">
+                    <button class="btn btn-secondary" id="changeChartTypeBatchBtn" onclick="loadMoreChartTypes()">
+                        ➕ 加载更多
+                    </button>
+                    <button class="btn btn-primary" id="selectChartTypeBtn" onclick="selectChartTypeAndShowVariations()" disabled>
+                        ✅ 选择此类型
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="variationCard" class="card hidden">
+            <div class="card-header">
+                📝 选择图表样式
+            </div>
+            <div class="card-body">
+                <div class="variation-container" id="variationContainer">
+                    <!-- Variations will be dynamically inserted here -->
+                </div>
+                <div class="text-center" style="margin-top: 30px; display: flex; justify-content: center; gap: 15px;">
+                    <button class="btn btn-secondary" id="changeVariationBatchBtn" onclick="loadMoreVariations()">
+                        ➕ 加载更多
+                    </button>
+                    <button class="btn btn-primary" id="selectVariationBtn" onclick="selectVariationAndShowReferences()" disabled>
+                        ✅ 选择此样式
+                    </button>
                 </div>
             </div>
         </div>
@@ -572,90 +801,15 @@
                 🎨 选择参考图表
             </div>
             <div class="card-body">
-                <div class="reference-container">
-                    <div class="main-reference">
-                        <div class="reference-item" id="mainReference">
-                            <div class="reference-image-container">
-                                <img class="reference-image" alt="最佳匹配参考图">
-                            </div>
-                            <div class="reference-label best-match">最佳匹配</div>
-                        </div>
-                    </div>
-                    <div class="other-references">
-                        <div class="reference-item" id="otherRef1">
-                            <div class="reference-image-container">
-                                <img class="reference-image" alt="参考图1">
-                            </div>
-                        </div>
-                        <div class="reference-item" id="otherRef2">
-                            <div class="reference-image-container">
-                                <img class="reference-image" alt="参考图2">
-                            </div>
-                        </div>
-                        <div class="reference-item" id="otherRef3">
-                            <div class="reference-image-container">
-                                <img class="reference-image" alt="参考图3">
-                            </div>
-                        </div>
-                        <div class="reference-item" id="otherRef4">
-                            <div class="reference-image-container">
-                                <img class="reference-image" alt="参考图4">
-                            </div>
-                        </div>
-                    </div>
+                <div id="referenceContainer" class="reference-grid">
+                    <!-- 参考图表将动态加载到这里 -->
                 </div>
-                <div class="text-center" style="margin-top: 30px;">
-                    <button class="btn btn-primary" id="selectReferenceBtn" onclick="startLayoutExtraction()" disabled>
-                        ✨ 选择此参考图表
+                <div class="text-center" style="margin-top: 30px; display: flex; justify-content: center; gap: 15px;">
+                    <button class="btn btn-secondary" id="loadMoreReferencesBtn" onclick="loadMoreReferences()" style="display: none;">
+                        ➕ 加载更多
                     </button>
-                </div>
-            </div>
-        </div>
-
-        <div id="variationCard" class="card hidden">
-            <div class="card-header">
-                📝 选择图表类型
-            </div>
-            <div class="card-body">
-                <div class="selection-container">
-                    <div class="main-selection">
-                        <div class="selection-item" id="mainVariation">
-                            <div class="selection-image-container">
-                                <img class="selection-image" alt="最佳匹配类型">
-                            </div>
-                            <div class="selection-label best-match">最佳匹配</div>
-                        </div>
-                    </div>
-                    <div class="other-selections">
-                        <div class="selection-item" id="variationOption1">
-                            <div class="selection-image-container">
-                                <img class="selection-image" alt="类型选项1">
-                            </div>
-                            <div class="selection-label">选项1</div>
-                        </div>
-                        <div class="selection-item" id="variationOption2">
-                            <div class="selection-image-container">
-                                <img class="selection-image" alt="类型选项2">
-                            </div>
-                            <div class="selection-label">选项2</div>
-                        </div>
-                        <div class="selection-item" id="variationOption3">
-                            <div class="selection-image-container">
-                                <img class="selection-image" alt="类型选项3">
-                            </div>
-                            <div class="selection-label">选项3</div>
-                        </div>
-                        <div class="selection-item" id="variationOption4">
-                            <div class="selection-image-container">
-                                <img class="selection-image" alt="类型选项4">
-                            </div>
-                            <div class="selection-label">选项4</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="text-center" style="margin-top: 30px;">
-                    <button class="btn btn-primary" id="selectVariationBtn" onclick="startTitleGeneration()" disabled>
-                        ✅ 选择此类型
+                    <button class="btn btn-primary" id="selectReferenceBtn" onclick="selectReferenceAndStartTitleGeneration()" disabled>
+                        ✨ 选择此参考图表
                     </button>
                 </div>
             </div>
@@ -721,6 +875,11 @@
                 <div class="text-center">
                     <img id="resultImage" class="result-image" alt="生成的信息图表">
                 </div>
+                <div class="text-center" style="margin-top: 30px;">
+                    <button class="btn btn-primary" id="downloadResultBtn" onclick="downloadResult()">
+                        ⬇️ 下载图片
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -735,6 +894,7 @@
 
     <script src="/static/script/index/index.js"></script>
     <script src="/static/script/index/reference.js"></script>
+    <script src="/static/script/index/charttype.js"></script>
     <script src="/static/script/index/variation.js"></script>
     <script src="/static/script/index/title.js"></script>
     <script src="/static/script/index/pictogram.js"></script>

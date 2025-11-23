@@ -20,13 +20,15 @@ document.getElementById('dataSelect').addEventListener('change', function() {
 function hideAllCards() {
     document.getElementById('dataPreview').classList.add('hidden');
     document.getElementById('referenceCard').classList.add('hidden');
+    document.getElementById('chartTypeCard').classList.add('hidden');
     document.getElementById('variationCard').classList.add('hidden');
     document.getElementById('titleCard').classList.add('hidden');
     document.getElementById('pictogramCard').classList.add('hidden');
     document.getElementById('resultCard').classList.add('hidden');
-    
+
     // 重置选择状态
     selectedReference = '';
+    selectedChartType = '';
     selectedVariation = '';
     selectedTitle = '';
     selectedTitleIndex = 0;
@@ -86,11 +88,12 @@ async function loadData(filename) {
     try {
         const response = await fetch(`/api/data/${filename}`);
         const result = await response.json();
-        
+
         if (result.columns && result.data) {
             displayTable(result.columns, result.data);
             document.getElementById('dataPreview').classList.remove('hidden');
             document.getElementById('referenceCard').classList.add('hidden');
+            document.getElementById('chartTypeCard').classList.add('hidden');
             document.getElementById('variationCard').classList.add('hidden');
             document.getElementById('titleCard').classList.add('hidden');
             document.getElementById('pictogramCard').classList.add('hidden');
@@ -219,6 +222,25 @@ function showResult(imageName) {
     
     // 滚动到结果
     resultCard.scrollIntoView({ behavior: 'smooth' });
+}
+
+// 下载生成的结果图片
+function downloadResult() {
+    const resultImage = document.getElementById('resultImage');
+    const imageSrc = resultImage.src;
+
+    if (!imageSrc) {
+        alert('没有可下载的图片');
+        return;
+    }
+
+    // 创建一个临时的a标签来触发下载
+    const link = document.createElement('a');
+    link.href = imageSrc;
+    link.download = 'infographic_' + new Date().getTime() + '.jpg';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // 隐藏加载界面

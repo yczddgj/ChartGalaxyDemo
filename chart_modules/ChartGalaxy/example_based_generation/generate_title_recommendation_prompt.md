@@ -3,7 +3,7 @@
 You are a data analyst and infographic designer. I will provide you with CSV data, and you need to recommend an appropriate title for an infographic based on this data.
 
 ## Requirements:
-1. **Title Length**: The title must be exactly 3-6 words
+1. **Title Length**: The title must be exactly 3-10 words
 2. **Content Accuracy**: The title must accurately reflect the main theme and key insights of the data
 3. **Clarity**: The title should be clear and easily understandable
 4. **Engagement**: The title should be engaging and suitable for an infographic audience
@@ -18,4 +18,4 @@ You are a data analyst and infographic designer. I will provide you with CSV dat
 {csv_data} 
 
 ## Output Format:
-Provide only one recommended title, 3-6 words long. Return only the title text, no other content.
+Provide only one recommended title, 3-10 words long. Return only the title text, no other content.
