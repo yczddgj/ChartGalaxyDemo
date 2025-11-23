@@ -79,6 +79,18 @@ Generate a high-quality infographic that looks like it was created with the same
     pictograms: []
   });
 
+  // --- State: Undo/Redo History ---
+  const [history, setHistory] = useState([]); // Array of canvas states (JSON strings)
+  const [historyIndex, setHistoryIndex] = useState(-1); // Current position in history
+  const maxHistorySize = 50; // Limit history size
+  const historyRef = useRef({ history: [], historyIndex: -1 }); // Ref to access latest history
+
+  // Sync historyRef with state
+  useEffect(() => {
+    historyRef.current.history = history;
+    historyRef.current.historyIndex = historyIndex;
+  }, [history, historyIndex]);
+
   // --- Initialization ---
   useEffect(() => {
     // Fetch Files
@@ -107,6 +119,112 @@ Generate a high-quality infographic that looks like it was created with the same
         container.style.backgroundColor = initialBgColor;
     }
 
+    // Save canvas state function
+    const saveCanvasState = () => {
+      if (!c) return;
+      const json = JSON.stringify(c.toJSON());
+      setHistory(prev => {
+        const currentIndex = historyRef.current.historyIndex;
+        const newHistory = prev.slice(0, currentIndex + 1);
+        newHistory.push(json);
+        // Limit history size
+        if (newHistory.length > maxHistorySize) {
+          newHistory.shift();
+          historyRef.current.historyIndex = maxHistorySize - 1;
+        } else {
+          historyRef.current.historyIndex = newHistory.length - 1;
+        }
+        historyRef.current.history = newHistory;
+        return newHistory;
+      });
+    };
+
+    // Undo function
+    const performUndo = () => {
+      if (!c || historyRef.current.historyIndex <= 0) return;
+      const newIndex = historyRef.current.historyIndex - 1;
+      const stateJson = historyRef.current.history[newIndex];
+      if (stateJson) {
+        c.loadFromJSON(stateJson, () => {
+          c.renderAll();
+          historyRef.current.historyIndex = newIndex;
+          setHistoryIndex(newIndex);
+        });
+      }
+    };
+
+    // Redo function
+    const performRedo = () => {
+      if (!c || historyRef.current.historyIndex >= historyRef.current.history.length - 1) return;
+      const newIndex = historyRef.current.historyIndex + 1;
+      const stateJson = historyRef.current.history[newIndex];
+      if (stateJson) {
+        c.loadFromJSON(stateJson, () => {
+          c.renderAll();
+          historyRef.current.historyIndex = newIndex;
+          setHistoryIndex(newIndex);
+        });
+      }
+    };
+
+    // Keyboard event handler for Delete key
+    const handleKeyDown = (e) => {
+      if (!c) return;
+      // Delete or Backspace key
+      if ((e.key === 'Delete' || e.key === 'Backspace') && c.getActiveObject()) {
+        e.preventDefault();
+        const activeObject = c.getActiveObject();
+        if (activeObject) {
+          saveCanvasState();
+          if (activeObject.type === 'activeSelection') {
+            // Multiple objects selected
+            activeObject.getObjects().forEach(obj => c.remove(obj));
+            c.discardActiveObject();
+          } else {
+            // Single object selected
+            c.remove(activeObject);
+          }
+          c.renderAll();
+        }
+      }
+      // Ctrl+Z for undo, Ctrl+Y or Ctrl+Shift+Z for redo
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'z' && !e.shiftKey) {
+          e.preventDefault();
+          performUndo();
+        } else if ((e.key === 'y' || (e.key === 'z' && e.shiftKey)) && !e.altKey) {
+          e.preventDefault();
+          performRedo();
+        }
+      }
+    };
+
+    // Add keyboard event listener
+    window.addEventListener('keydown', handleKeyDown);
+
+    // Listen to canvas object changes for history
+    c.on('object:added', () => {
+      // Debounce to avoid too many history entries
+      clearTimeout(c._historyTimeout);
+      c._historyTimeout = setTimeout(() => {
+        saveCanvasState();
+      }, 300);
+    });
+
+    c.on('object:removed', () => {
+      clearTimeout(c._historyTimeout);
+      c._historyTimeout = setTimeout(() => {
+        saveCanvasState();
+      }, 300);
+    });
+
+    c.on('object:modified', () => {
+      clearTimeout(c._historyTimeout);
+      c._historyTimeout = setTimeout(() => {
+        saveCanvasState();
+      }, 300);
+    });
+
     // Resize canvas on window resize
     const resizeCanvas = () => {
         const container = document.querySelector('.canvas-wrapper');
@@ -121,8 +239,12 @@ Generate a high-quality infographic that looks like it was created with the same
     window.addEventListener('resize', resizeCanvas);
 
     return () => {
-      c.dispose();
+      window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('resize', resizeCanvas);
+      if (c._historyTimeout) {
+        clearTimeout(c._historyTimeout);
+      }
+      c.dispose();
     };
   }, []);
 
@@ -164,6 +286,12 @@ Generate a high-quality infographic that looks like it was created with the same
 
     // Reset saved positions
     setSavedPositions({ chart: null, title: null, pictograms: [] });
+
+    // Reset history when switching files
+    setHistory([]);
+    setHistoryIndex(-1);
+    historyRef.current.history = [];
+    historyRef.current.historyIndex = -1;
 
     setSelectedFile(file);
     if (file) {
@@ -539,6 +667,29 @@ Generate a high-quality infographic that looks like it was created with the same
       }
   }, [titleImage, selectedPictograms]);
 
+  // Note: Initial canvas state is saved in loadChartToCanvas function
+  // This useEffect is kept as a backup but may not be needed
+
+  // Update delete button state when selection changes
+  const [hasSelection, setHasSelection] = useState(false);
+  useEffect(() => {
+    if (!canvas) return;
+    
+    const updateSelection = () => {
+      setHasSelection(!!canvas.getActiveObject());
+    };
+
+    canvas.on('selection:created', updateSelection);
+    canvas.on('selection:updated', updateSelection);
+    canvas.on('selection:cleared', updateSelection);
+
+    return () => {
+      canvas.off('selection:created', updateSelection);
+      canvas.off('selection:updated', updateSelection);
+      canvas.off('selection:cleared', updateSelection);
+    };
+  }, [canvas]);
+
   const loadChartToCanvas = async (variationName, directUrl = null, preservePositions = false) => {
       if (!canvas || !selectedFile) return;
       setLoading(true);
@@ -777,11 +928,82 @@ Generate a high-quality infographic that looks like it was created with the same
 
           canvas.renderAll();
 
+          // Save initial state after loading
+          setTimeout(() => {
+            if (canvas && canvas.getObjects().length > 0) {
+              const json = JSON.stringify(canvas.toJSON());
+              setHistory([json]);
+              setHistoryIndex(0);
+              historyRef.current.history = [json];
+              historyRef.current.historyIndex = 0;
+            }
+          }, 100);
+
       } catch (err) {
           console.error(err);
       } finally {
           setLoading(false);
       }
+  };
+
+  // --- Undo/Redo Functions ---
+  const handleUndo = () => {
+    if (!canvas || historyRef.current.historyIndex <= 0) return;
+    const newIndex = historyRef.current.historyIndex - 1;
+    const stateJson = historyRef.current.history[newIndex];
+    if (stateJson) {
+      canvas.loadFromJSON(stateJson, () => {
+        canvas.renderAll();
+        historyRef.current.historyIndex = newIndex;
+        setHistoryIndex(newIndex);
+      });
+    }
+  };
+
+  const handleRedo = () => {
+    if (!canvas || historyRef.current.historyIndex >= historyRef.current.history.length - 1) return;
+    const newIndex = historyRef.current.historyIndex + 1;
+    const stateJson = historyRef.current.history[newIndex];
+    if (stateJson) {
+      canvas.loadFromJSON(stateJson, () => {
+        canvas.renderAll();
+        historyRef.current.historyIndex = newIndex;
+        setHistoryIndex(newIndex);
+      });
+    }
+  };
+
+  const handleDelete = () => {
+    if (!canvas) return;
+    const activeObject = canvas.getActiveObject();
+    if (activeObject) {
+      // Save state before deletion
+      const json = JSON.stringify(canvas.toJSON());
+      setHistory(prev => {
+        const currentIndex = historyRef.current.historyIndex;
+        const newHistory = prev.slice(0, currentIndex + 1);
+        newHistory.push(json);
+        if (newHistory.length > maxHistorySize) {
+          newHistory.shift();
+          historyRef.current.historyIndex = maxHistorySize - 1;
+        } else {
+          historyRef.current.historyIndex = newHistory.length - 1;
+        }
+        historyRef.current.history = newHistory;
+        return newHistory;
+      });
+      setHistoryIndex(historyRef.current.historyIndex);
+
+      if (activeObject.type === 'activeSelection') {
+        // Multiple objects selected
+        activeObject.getObjects().forEach(obj => canvas.remove(obj));
+        canvas.discardActiveObject();
+      } else {
+        // Single object selected
+        canvas.remove(activeObject);
+      }
+      canvas.renderAll();
+    }
   };
 
   // --- Background Color Management ---
@@ -1156,6 +1378,54 @@ Generate a high-quality infographic that looks like it was created with the same
         <div className="preview-header">可编辑画布</div>
         <div className="canvas-wrapper">
             <canvas id="workbenchCanvas" />
+        </div>
+        
+        {/* Canvas Control Buttons */}
+        <div className="canvas-controls" style={{
+          position: 'absolute',
+          top: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          gap: '8px',
+          zIndex: 10
+        }}>
+          <button 
+            onClick={handleRedo}
+            disabled={historyIndex >= history.length - 1}
+            style={{
+              padding: '8px 16px',
+              background: historyIndex >= history.length - 1 ? '#e0e0e0' : '#6366f1',
+              color: historyIndex >= history.length - 1 ? '#999' : 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: historyIndex >= history.length - 1 ? 'not-allowed' : 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              opacity: historyIndex >= history.length - 1 ? 0.5 : 1
+            }}
+            title="重做 (Ctrl+Y)"
+          >
+            ↷ 重做
+          </button>
+          <button 
+            onClick={handleDelete}
+            disabled={!canvas || !hasSelection}
+            style={{
+              padding: '8px 16px',
+              background: (!canvas || !hasSelection) ? '#e0e0e0' : '#ef4444',
+              color: (!canvas || !hasSelection) ? '#999' : 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: (!canvas || !hasSelection) ? 'not-allowed' : 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              opacity: (!canvas || !hasSelection) ? 0.5 : 1
+            }}
+            title="删除选中元素 (Delete)"
+          >
+            🗑️ 删除
+          </button>
         </div>
         
         {/* Edit Button */}

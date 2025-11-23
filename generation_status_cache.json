@@ -885,7 +885,7 @@
   "id": "Commute",
   "chart_type_page": 0,
   "variation_page": 0,
-  "selected_chart_type": "horizontal bar chart",
+  "selected_chart_type": "vertical bar chart",
   "available_chart_types": [
     {
       "type": "horizontal bar chart",
@@ -940,72 +940,104 @@
   ],
   "available_variations": [
     {
-      "name": "horizontal_bar_chart_0_weilai",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_0_weilai",
+      "name": "vertical_bar_chart_09_2",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_09_2",
       "fields": [
         "x",
         "y"
       ]
     },
     {
-      "name": "horizontal_bar_chart_0",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_0",
+      "name": "vertical_bar_chart_07_2",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_07_2",
       "fields": [
         "x",
         "y"
       ]
     },
     {
-      "name": "horizontal_bar_chart_8",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_8",
+      "name": "vertical_bar_chart_17_01",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_17_01",
       "fields": [
         "x",
         "y"
       ]
     },
     {
-      "name": "horizontal_bar_chart_2",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_2",
+      "name": "vertical_bar_chart_04",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_04",
       "fields": [
         "x",
         "y"
       ]
     },
     {
-      "name": "horizontal_bar_chart_5_hand",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_5_hand",
+      "name": "vertical_bar_chart_17",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_17",
       "fields": [
         "x",
         "y"
       ]
     },
     {
-      "name": "horizontal_bar_chart_5",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_5",
+      "name": "vertical_bar_chart_24",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_24",
       "fields": [
         "x",
         "y"
       ]
     },
     {
-      "name": "horizontal_bar_chart_2_hand",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_2_hand",
+      "name": "vertical_bar_chart_23",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_23",
       "fields": [
         "x",
         "y"
       ]
     },
     {
-      "name": "horizontal_bar_chart_1",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_1",
+      "name": "vertical_bar_chart_06",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_06",
       "fields": [
         "x",
         "y"
       ]
     },
     {
-      "name": "horizontal_bar_chart_9",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_9",
+      "name": "vertical_bar_chart_16",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_16",
+      "fields": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "name": "vertical_bar_chart_15",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_15",
+      "fields": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "name": "vertical_bar_chart_10",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_10",
+      "fields": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "name": "vertical_bar_chart_09",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_09",
+      "fields": [
+        "x",
+        "y"
+      ]
+    },
+    {
+      "name": "vertical_bar_chart_19_01",
+      "template": "d3-js/vertical bar chart/vertical_bar_chart_19_01",
       "fields": [
         "x",
         "y"
