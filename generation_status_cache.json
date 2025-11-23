@@ -1,7 +1,7 @@
 {
-  "step": "pictogram_generation",
+  "step": "layout_extraction",
   "status": "completed",
-  "progress": "生成配图 3/3...",
+  "progress": "抽取参考信息图表布局...",
   "completed": true,
   "style": {
     "colors": [
@@ -37,1805 +37,1104 @@
       219
     ]
   },
-  "selected_data": "processed_data/Green.json",
+  "selected_data": "processed_data/App.json",
   "selected_pictogram": "",
   "selected_title": "",
   "extraction_templates": [
     [
-      "echarts_py/pie chart/pie_chart_01",
+      "d3-js/multiple pie chart/multiple_pie_chart_05",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "echarts_py/pie chart/pie_chart_03",
+      "d3-js/multiple pie chart/multiple_pie_chart_04",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "echarts_py/pie chart/pie_chart_02",
+      "d3-js/multiple pie chart/multiple_pie_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/pie chart/pie_chart_03_d3",
+      "d3-js/multiple pie chart/multiple_pie_chart_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/pie chart/pie_chart_01_hand",
+      "d3-js/horizontal group bar chart/horizontal_group_bar_chart_13",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/pie chart/pie_chart_00",
+      "d3-js/horizontal group bar chart/horizontal_group_bar_chart_06",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/pie chart/pie_chart_01_d3",
+      "d3-js/horizontal group bar chart/horizontal_group_bar_chart_16",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/pie chart/pie_chart_icons_01",
+      "d3-js/horizontal group bar chart/horizontal_group_bar_chart_03_hand",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/pie chart/pie_plain_chart_01",
+      "d3-js/horizontal group bar chart/horizontal_group_bar_chart_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_02",
+      "d3-js/horizontal group bar chart/horizontal_group_bar_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_04_hand",
+      "d3-js/horizontal group bar chart/horizontal_group_bar_plain_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_02_hand",
+      "d3-js/range chart/horizontal_range_bar_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_06_d3",
+      "d3-js/range chart/vertical_range_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_00",
+      "d3-js/horizontal diverging bar chart/horizontal_diverging_bar_chart_11",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_03_d3_hand",
+      "d3-js/horizontal diverging bar chart/horizontal_diverging_bar_chart_05",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_05_d3",
+      "d3-js/horizontal diverging bar chart/horizontal_diverging_bar_chart_07",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_00_hand",
+      "d3-js/horizontal diverging bar chart/horizontal_diverging_bar_chart_12",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_04_d3",
+      "d3-js/group dot bar chart/horizontal_group_dot_bar_chart_0",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_09",
+      "d3-js/vertical group bar chart/vertical_group_bar_chart_13",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_03_d3",
+      "d3-js/vertical group bar chart/vertical_group_bar_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_07_d3",
+      "d3-js/vertical group bar chart/vertical_group_bar_chart_5",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_08",
+      "d3-js/diverging bar chart/diverging_bar_plain_chart_04",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_plain_chart_01",
+      "d3-js/diverging bar chart/diverging_bar_plain_chart_05",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_icons_01",
+      "d3-js/diverging bar chart/diverging_bar_plain_chart_06",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_icons_03",
+      "d3-js/multiple radar chart/multiple_radar_chart_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/donut chart/donut_chart_icons_02",
+      "d3-js/multiple radar chart/multiple_radar_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/semicircle donut chart/semicircle_donut_chart_05_d3",
+      "d3-js/multiple radar spline chart/multiple_radar_spline_chart_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/semicircle donut chart/semicircle_donut_chart_06_d3",
+      "d3-js/multiple radar spline chart/multiple_radar_spline_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/semicircle donut chart/semicircle_donut_chart_04_d3",
+      "d3-js/multiple radar spline chart/multiple_radar_spline_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/semicircle donut chart/semicircle_donut_chart_03_d3",
+      "d3-js/multiple radar line chart/multiple_radar_line_chart_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/semicircle donut chart/semicircle_donut_chart_00",
+      "d3-js/stacked area chart/stacked_area_plain_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/semicircle donut chart/semicircle_donut_plain_chart_01",
+      "d3-js/stacked area chart/stacked_area_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/rose chart/rose_chart_new_00",
+      "d3-js/stacked area chart/stacked_area_chart_icons_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/rose chart/rose_chart_new_00_hand",
+      "d3-js/stacked area chart/stacked_area_chart_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/rose chart/rose_plain_chart_01",
+      "d3-js/stacked area chart/stacked_area_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/multiple gauge chart/multiple_gauge_chart_03",
+      "d3-js/stacked area chart/spline_stacked_area_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/multiple gauge chart/multiple_gauge_chart_03_hand",
+      "d3-js/stacked area chart/stacked_area_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/semicircle pie chart/semicircle_pie_chart_01_d3",
+      "d3-js/alluvial diagram/alluvial_diagram_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/semicircle pie chart/semicircle_pie_chart_03_d3",
+      "d3-js/alluvial diagram/alluvial_diagram_01_dark",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/semicircle pie chart/semicircle_pie_plain_chart_01",
+      "d3-js/stacked circular bar chart/stacked_circular_bar_chart_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_1",
+      "d3-js/group radial bar chart/group_radial_bar_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_33",
+      "d3-js/group radial bar chart/group_radial_bar_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_2",
+      "d3-js/group radial bar chart/group_radial_bar_chart_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_5",
+      "d3-js/radial bar chart/radial_bar_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_2_hand",
+      "d3-js/stacked radial bar chart/stacked_radial_bar_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_0_weilai",
+      "d3-js/stacked radial bar chart/stacked_radial_bar_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_28",
+      "d3-js/circular stacked bar chart/circular_stacked_bar_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_9",
+      "d3-js/small multiples of spline area charts/small_multiple_spline_area_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_3",
+      "d3-js/radial stacked bar chart/radial_stacked_bar_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_18",
+      "d3-js/small multiple stepped line graph/small_multiple_step_line_graph_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_4_hand",
+      "d3-js/small multiple step line graph/small_multiple_step_line_graph_icons_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_30",
+      "d3-js/diverging spline area chart/diverging_spline_area_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_5_hand",
+      "d3-js/multiple line graph/multiple_line_graph_07",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_6",
+      "d3-js/multiple line graph/multiple_line_graph_10",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_0",
+      "d3-js/multiple line graph/multiple_line_graph_08",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_12",
+      "d3-js/multiple line graph/multiple_line_graph_12",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_29",
+      "d3-js/multiple line graph/multiple_line_graph_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_8",
+      "d3-js/multiple line graph/multiple_line_graph_09",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_10",
+      "d3-js/multiple line graph/multiple_line_graph_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_4",
+      "d3-js/multiple line graph/multiple_line_graph_06",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_7",
+      "d3-js/multiple line graph/multiple_line_graph_11",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_19",
+      "d3-js/multiple spline graph/multiple_spline_graph_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_chart_01",
+      "d3-js/multiple spline graph/multiple_spline_graph_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_plain_chart_05",
+      "d3-js/slope chart/slope_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_plain_chart_06",
+      "d3-js/slope chart/slope_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_plain_chart_03",
+      "d3-js/slope chart/slope_chart_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_plain_chart_08",
+      "d3-js/small multiple line graph/small_multiple_line_graph_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_plain_chart_04",
+      "d3-js/spline graph/spline_graph_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_plain_chart_02",
+      "d3-js/spline graph/spline_graph_plain_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal bar chart/horizontal_bar_plain_chart_01",
+      "d3-js/spline graph/spline_graph_plain_chart_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/lollipop chart/horizontal_lollipop_chart_02",
+      "d3-js/multiple step line graph/multiple_step_line_graph_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/lollipop chart/vertical_lollipop_chart_01",
+      "d3-js/small multiples of area charts/small_multiple_area_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/lollipop chart/lollipop_icon_chart_01",
+      "d3-js/radial stacked area chart/radial_stacked_area_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/lollipop chart/lollipop_plain_chart_02",
+      "d3-js/radial stacked area chart/radial_stacked_area_chart_grid_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/lollipop chart/lollipop_icon_chart_02",
+      "d3-js/vertical grouped bar chart/vertical_group_bar_plain_chart_04",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/lollipop chart/lollipop_plain_chart_01",
+      "d3-js/vertical grouped bar chart/vertical_group_bar_chart_8",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal waffle chart/horizontal_waffle_chart_02",
+      "d3-js/vertical grouped bar chart/triangle_group_bar_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal waffle chart/horizontal_waffle_chart_01",
+      "d3-js/small multiples of pie charts/small_multiples_semicircle_pie_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal dot bar chart/horizontal_dot_bar_chart_01",
+      "d3-js/layered spline area chart/layered_spline_area_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/horizontal dot bar chart/horizontal_dot_bar_plain_chart_01",
+      "d3-js/radial layered spline area chart/radial_layered_spline_area_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/radial area chart/radial_area_chart_grid_01",
+      "d3-js/radial layered spline area chart/radial_layered_spline_area_chart_grid_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/radial area chart/radial_area_plain_chart_01",
+      "d3-js/test/test",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/radial spline chart/radial_spline_plain_chart_01",
+      "d3-js/small multiple area chart/small_multiple_area_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/radial spline chart/radial_spline_chart_grid_01",
+      "d3-js/small multiple area chart/small_multiple_area_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_09_2",
+      "d3-js/range area chart/range_area_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_20",
+      "d3-js/range area chart/range_area_chart_icons_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_07_2",
+      "d3-js/range area chart/range_area_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_08_2",
+      "d3-js/multiple area chart/spline_multiple_area_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_07",
+      "d3-js/multiple area chart/multiple_area_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_08",
+      "d3-js/layered area chart/layered_area_chart_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_plain_chart_01",
+      "d3-js/layered area chart/spline_layered_area_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_18",
+      "d3-js/layered area chart/layered_area_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_18_01",
+      "d3-js/radial layered area chart/radial_layered_area_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_24",
+      "d3-js/radial layered area chart/radial_layered_area_chart_grid_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_15",
+      "d3-js/radial grouped bar chart/radial_grouped_bar_plain_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_01",
+      "d3-js/radial grouped bar chart/radial_grouped_bar_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_09",
+      "d3-js/radial grouped bar chart/radial_grouped_bar_plain_chart_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_04",
+      "d3-js/diverging area chart/diverging_area_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_19_01",
+      "d3-js/span chart/span_plain_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_23",
+      "d3-js/span chart/span_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_06",
+      "d3-js/line graph/line_graph_plain_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_16",
+      "d3-js/line graph/line_graph_plain_chart_03",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_17",
+      "d3-js/line graph/line_graph_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_10",
+      "d3-js/small multiples of gauge chart/small_multiples_gauge_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_17_01",
+      "d3-js/radial range area chart/radial_range_area_chart_grid_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_chart_05",
+      "d3-js/radial range area chart/radial_range_area_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_plain_chart_02",
+      "d3-js/small multiples of line graphs/small_multiples_line_graphs_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_plain_chart_04",
+      "d3-js/stepped line graph/stepped_line_graph_plain_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_plain_chart_03",
+      "d3-js/dumbbell plot/dumbbell_plot_plain_chart_01",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/vertical bar chart/vertical_bar_plain_chart_05",
+      "d3-js/dumbbell plot/dumbbell_plot_plain_chart_02",
       [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     ],
     [
-      "d3-js/proportional area chart(droplet)/proportional_area_chart_other_01",
+      "d3-js/small multiples of spline graphs/small_multiples_spline_graphs_plain_chart_01",
       [
         "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/radar line chart/radar_line_chart_03",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/radar line chart/radar_line_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/radar spline chart/radar_spline_chart_03",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/radar spline chart/radar_spline_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pictorial percentage bar chart/vertical_pictorial_percentage_bar_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pictorial percentage bar chart/vertical_pictorial_percentage_bar_chart_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pictorial percentage bar chart/pictorial_percentage_bar_plain_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/vertical dot bar chart/vertical_dot_bar_plain_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/circular bar chart/circular_bar_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/circular bar chart/circular_bar_chart_04",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/circular bar chart/circular_bar_chart_03",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/circular bar chart/circular_bar_chart_icons_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/circular bar chart/circular_bar_plain_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/radial bar chart/radial_bar_plain_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/radial bar chart/radial_bar_chart_05",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/radial bar chart/radial_bar_chart_04",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/radial bar chart/radial_bar_plain_chart_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/radial line chart/radial_line_plain_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pyramid chart/pyramid_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pyramid chart/pyramid_chart_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pyramid chart/pyramid_chart_01_dark",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pyramid chart/pyramid_chart_03",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/voronoi treemap/voronoi_treemap_plain_chart_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/voronoi treemap/voronoi_treemap_plain_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/small multiples of waffle charts/small_multiples_waffle_plain_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/multiple line graph/vertical_bar_chart_new_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/multiple line graph/vertical_bar_chart_new_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/vertical waffle chart/vertical_waffle_chart_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/vertical waffle chart/vertical_waffle_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/vertical waffle chart/vertical_waffle_chart_04",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/vertical waffle chart/vertical_waffle_chart_03",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pyramid diagram/pyramid_diagram_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pyramid diagram/pyramid_diagram_01_3d_dark",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pyramid diagram/pyramid_diagram_01_3d",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pyramid diagram/pyramid_diagram_01_hand",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pyramid diagram/pyramid_diagram_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/pyramid diagram/pyramid_diagram_02_hand",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/funnel chart/funnel_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/funnel chart/funnel_chart_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/funnel chart/funnel_plain_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/funnel chart/funnel_plain_chart_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/waffle chart/waffle_plain_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/waffle chart/waffle_plain_chart_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/treemap/treemap_plain_chart_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/treemap/treemap_plain_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/treemap/treemap_05_hand",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/treemap/treemap_05_dark",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/treemap/treemap_06_hand",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/treemap/treemap_01_dark",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/treemap/treemap_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/treemap/treemap_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/treemap/treemap_03",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/small multiples of gauge chart/small_multiples_gauge_plain_chart_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/small multiples of gauge chart/small_multiples_gauge_plain_chart_03",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/small multiples of gauge charts/small_multiples_gauge_plain_chart_04",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (triangle)/proportional_area_chart_triangle_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (triangle)/proportional_area_chart_triangle_08",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (triangle)/proportional_area_chart_triangle_09",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (triangle)/proportional_area_chart_triangle_3d_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (triangle)/proportional_area_chart_triangle_03",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (circle)/proportional_area_chart_circle_12",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (circle)/proportional_area_chart_circle_06",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (circle)/proportional_area_chart_circle_3d_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (circle)/proportional_area_chart_circle_11",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (circle)/proportional_area_chart_circle_02_hand",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (circle)/proportional_area_chart_circle_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (circle)/proportional_area_chart_circle_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (circle)/proportional_area_chart_circle_07",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (square)/proportional_area_chart_square_07",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (square)/proportional_area_chart_square_09",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (square)/proportional_area_chart_square_3d_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (square)/proportional_area_chart_square_04",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (square)/proportional_area_chart_square_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (square)/proportional_area_chart_square_08",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (square)/proportional_area_chart_square_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (square)/proportional_area_chart_square_03",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (square)/proportional_area_chart_square_06",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (hexagon)/proportional_area_chart_hexagon_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (hexagon)/proportional_area_chart_hexagon_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/triangle bar chart/triangle_bar_chart_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/triangle bar chart/triangle_bar_chart_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (pentagram)/proportional_area_chart_pentagram_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart (pentagram)/proportional_area_chart_pentagram_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/voronoi treemap(rectangle)/voronoi_treemap_rectangle_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/voronoi treemap(rectangle)/voronoi_treemap_rectangle_01",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/voronoi treemap(rectangle)/voronoi_treemap_rectangle_03",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/voronoi treemap(circle)/voronoi_treemap_circle_01_dark",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/voronoi treemap(circle)/voronoi_treemap_circle_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/voronoi treemap(circle)/voronoi_treemap_circle_04",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/voronoi treemap(circle)/voronoi_treemap_circle_03_hand",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart/proportional_area_plain_chart_03",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart/proportional_area_plain_chart_02",
-      [
-        "x",
-        "y"
-      ]
-    ],
-    [
-      "d3-js/proportional area chart/proportional_area_plain_chart_01",
-      [
-        "x",
-        "y"
+        "y",
+        "group"
       ]
     ]
   ],
-  "id": "Green",
+  "id": "App",
   "chart_type_page": 0,
   "variation_page": 0,
-  "selected_chart_type": "horizontal bar chart",
+  "selected_chart_type": "horizontal group bar chart",
   "available_chart_types": [
     {
-      "type": "horizontal bar chart",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_1"
+      "type": "horizontal group bar chart",
+      "template": "d3-js/horizontal group bar chart/horizontal_group_bar_chart_13",
+      "image_url": "/static/chart_types/Horizontal Grouped Bar Chart.png"
     },
     {
-      "type": "vertical bar chart",
-      "template": "d3-js/vertical bar chart/vertical_bar_chart_09_2"
+      "type": "vertical group bar chart",
+      "template": "d3-js/vertical group bar chart/vertical_group_bar_chart_13",
+      "image_url": "/static/chart_types/Vertical Grouped Bar Chart.png"
     },
     {
-      "type": "donut chart",
-      "template": "d3-js/donut chart/donut_chart_02"
-    },
-    {
-      "type": "proportional area chart (circle)",
-      "template": "d3-js/proportional area chart (circle)/proportional_area_chart_circle_12"
+      "type": "horizontal diverging bar chart",
+      "template": "d3-js/horizontal diverging bar chart/horizontal_diverging_bar_chart_11",
+      "image_url": "/static/chart_types/Horizontal Dot Bar Chart.png"
     },
     {
       "type": "multiple line graph",
-      "template": "d3-js/multiple line graph/vertical_bar_chart_new_01"
+      "template": "d3-js/multiple line graph/multiple_line_graph_07",
+      "image_url": "/static/chart_types/Multiple Line Graphs.png"
     },
     {
-      "type": "proportional area chart (square)",
-      "template": "d3-js/proportional area chart (square)/proportional_area_chart_square_07"
+      "type": "diverging bar chart",
+      "template": "d3-js/diverging bar chart/diverging_bar_plain_chart_04",
+      "image_url": "/static/chart_types/Diverging Bar Chart.png"
     },
     {
-      "type": "proportional area chart (triangle)",
-      "template": "d3-js/proportional area chart (triangle)/proportional_area_chart_triangle_02"
+      "type": "stacked area chart",
+      "template": "d3-js/stacked area chart/stacked_area_plain_chart_02",
+      "image_url": "/static/chart_types/Stacked Area Chart.png"
     },
     {
-      "type": "pie chart",
-      "template": "echarts_py/pie chart/pie_chart_01"
-    },
-    {
-      "type": "treemap",
-      "template": "d3-js/treemap/treemap_plain_chart_02"
-    },
-    {
-      "type": "circular bar chart",
-      "template": "d3-js/circular bar chart/circular_bar_chart_01"
-    },
-    {
-      "type": "multiple gauge chart",
-      "template": "d3-js/multiple gauge chart/multiple_gauge_chart_03"
-    },
-    {
-      "type": "lollipop chart",
-      "template": "d3-js/lollipop chart/horizontal_lollipop_chart_02"
-    },
-    {
-      "type": "semicircle donut chart",
-      "template": "d3-js/semicircle donut chart/semicircle_donut_chart_05_d3"
-    },
-    {
-      "type": "pyramid diagram",
-      "template": "d3-js/pyramid diagram/pyramid_diagram_01"
-    },
-    {
-      "type": "vertical waffle chart",
-      "template": "d3-js/vertical waffle chart/vertical_waffle_chart_02"
+      "type": "multiple pie chart",
+      "template": "d3-js/multiple pie chart/multiple_pie_chart_05",
+      "image_url": "/static/chart_types/Multiples pie charts.png"
     },
     {
       "type": "radial bar chart",
-      "template": "d3-js/radial bar chart/radial_bar_plain_chart_01"
+      "template": "d3-js/radial bar chart/radial_bar_chart_02",
+      "image_url": "/static/chart_types/Radial Bar Chart.png"
     },
     {
-      "type": "rose chart",
-      "template": "d3-js/rose chart/rose_chart_new_00"
+      "type": "stacked circular bar chart",
+      "template": "d3-js/stacked circular bar chart/stacked_circular_bar_chart_03",
+      "image_url": "/static/chart_types/Circular Bar Chart.png"
     },
     {
-      "type": "pyramid chart",
-      "template": "d3-js/pyramid chart/pyramid_chart_01"
+      "type": "group radial bar chart",
+      "template": "d3-js/group radial bar chart/group_radial_bar_chart_02",
+      "image_url": "/static/chart_types/Radial Bar Chart.png"
     },
     {
-      "type": "voronoi treemap(circle)",
-      "template": "d3-js/voronoi treemap(circle)/voronoi_treemap_circle_01_dark"
+      "type": "radial grouped bar chart",
+      "template": "d3-js/radial grouped bar chart/radial_grouped_bar_plain_chart_02",
+      "image_url": "/static/chart_types/Radial Grouped Bar Chart.png"
     },
     {
-      "type": "voronoi treemap(rectangle)",
-      "template": "d3-js/voronoi treemap(rectangle)/voronoi_treemap_rectangle_02"
+      "type": "line graph",
+      "template": "d3-js/line graph/line_graph_plain_chart_02",
+      "image_url": "/static/chart_types/Line Graph.png"
     },
     {
-      "type": "proportional area chart",
-      "template": "d3-js/proportional area chart/proportional_area_plain_chart_03"
+      "type": "multiple radar spline chart",
+      "template": "d3-js/multiple radar spline chart/multiple_radar_spline_chart_03",
+      "image_url": "/static/chart_types/Multiples Radar Spline Charts.png"
     },
     {
-      "type": "pictorial percentage bar chart",
-      "template": "d3-js/pictorial percentage bar chart/vertical_pictorial_percentage_bar_chart_01"
+      "type": "stacked radial bar chart",
+      "template": "d3-js/stacked radial bar chart/stacked_radial_bar_chart_02",
+      "image_url": "/static/chart_types/Radial Bar Chart.png"
     },
     {
-      "type": "horizontal dot bar chart",
-      "template": "d3-js/horizontal dot bar chart/horizontal_dot_bar_chart_01"
+      "type": "layered area chart",
+      "template": "d3-js/layered area chart/layered_area_chart_03",
+      "image_url": "/static/chart_types/Layered Area Chart.png"
     },
     {
-      "type": "radar line chart",
-      "template": "d3-js/radar line chart/radar_line_chart_03"
+      "type": "slope chart",
+      "template": "d3-js/slope chart/slope_chart_01",
+      "image_url": "/static/chart_types/Slope Chart.png"
     },
     {
-      "type": "radar spline chart",
-      "template": "d3-js/radar spline chart/radar_spline_chart_03"
+      "type": "group dot bar chart",
+      "template": "d3-js/group dot bar chart/horizontal_group_dot_bar_chart_0",
+      "image_url": null
     },
     {
-      "type": "horizontal waffle chart",
-      "template": "d3-js/horizontal waffle chart/horizontal_waffle_chart_02"
+      "type": "range chart",
+      "template": "d3-js/range chart/horizontal_range_bar_chart_01",
+      "image_url": "/static/chart_types/Gauge Chart.png"
     },
     {
-      "type": "proportional area chart (pentagram)",
-      "template": "d3-js/proportional area chart (pentagram)/proportional_area_chart_pentagram_02"
+      "type": "span chart",
+      "template": "d3-js/span chart/span_plain_chart_02",
+      "image_url": "/static/chart_types/Span Chart.png"
     },
     {
-      "type": "triangle bar chart",
-      "template": "d3-js/triangle bar chart/triangle_bar_chart_01"
+      "type": "multiple spline graph",
+      "template": "d3-js/multiple spline graph/multiple_spline_graph_01",
+      "image_url": "/static/chart_types/Multiple Spline Graphs.png"
     },
     {
-      "type": "semicircle pie chart",
-      "template": "d3-js/semicircle pie chart/semicircle_pie_chart_01_d3"
+      "type": "range area chart",
+      "template": "d3-js/range area chart/range_area_chart_01",
+      "image_url": "/static/chart_types/Range Area Chart.png"
     },
     {
-      "type": "funnel chart",
-      "template": "d3-js/funnel chart/funnel_chart_01"
+      "type": "multiple radar chart",
+      "template": "d3-js/multiple radar chart/multiple_radar_chart_03",
+      "image_url": "/static/chart_types/Multiple Radar Line Charts.png"
+    },
+    {
+      "type": "small multiple area chart",
+      "template": "d3-js/small multiple area chart/small_multiple_area_chart_02",
+      "image_url": "/static/chart_types/Multiple Area Charts.png"
+    },
+    {
+      "type": "multiple area chart",
+      "template": "d3-js/multiple area chart/spline_multiple_area_chart_01",
+      "image_url": "/static/chart_types/Multiple Area Charts.png"
+    },
+    {
+      "type": "vertical grouped bar chart",
+      "template": "d3-js/vertical grouped bar chart/vertical_group_bar_plain_chart_04",
+      "image_url": "/static/chart_types/Vertical Grouped Bar Chart.png"
     }
   ],
   "chart_type_previews": {
-    "horizontal bar chart": {
-      "variation_name": "horizontal_bar_chart_10",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_10",
-      "output_file": "charttype_horizontal_bar_chart.svg"
+    "horizontal group bar chart": {
+      "variation_name": "horizontal_group_bar_chart_16",
+      "template": "d3-js/horizontal group bar chart/horizontal_group_bar_chart_16",
+      "output_file": "charttype_horizontal_group_bar_chart.svg"
     },
-    "vertical bar chart": {
-      "variation_name": "vertical_bar_chart_10",
-      "template": "d3-js/vertical bar chart/vertical_bar_chart_10",
-      "output_file": "charttype_vertical_bar_chart.svg"
+    "vertical group bar chart": {
+      "variation_name": "vertical_group_bar_plain_chart_01",
+      "template": "d3-js/vertical group bar chart/vertical_group_bar_plain_chart_01",
+      "output_file": "charttype_vertical_group_bar_chart.svg"
     },
-    "donut chart": {
-      "variation_name": "donut_chart_icons_02",
-      "template": "d3-js/donut chart/donut_chart_icons_02",
-      "output_file": "charttype_donut_chart.svg"
+    "horizontal diverging bar chart": {
+      "variation_name": "horizontal_diverging_bar_chart_07",
+      "template": "d3-js/horizontal diverging bar chart/horizontal_diverging_bar_chart_07",
+      "output_file": "charttype_horizontal_diverging_bar_chart.svg"
     }
   },
   "available_variations": [
     {
-      "name": "horizontal_bar_chart_0_weilai",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_0_weilai",
+      "name": "horizontal_group_bar_chart_03_hand",
+      "template": "d3-js/horizontal group bar chart/horizontal_group_bar_chart_03_hand",
       "fields": [
         "x",
-        "y"
+        "y",
+        "group"
       ]
     },
     {
-      "name": "horizontal_bar_chart_0",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_0",
+      "name": "horizontal_group_bar_chart_03",
+      "template": "d3-js/horizontal group bar chart/horizontal_group_bar_chart_03",
       "fields": [
         "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_4",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_4",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_6",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_6",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_7",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_7",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_8",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_8",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_29",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_29",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_2",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_2",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_5_hand",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_5_hand",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_5",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_5",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_2_hand",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_2_hand",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_3",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_3",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_4_hand",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_4_hand",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_28",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_28",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_1",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_1",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_33",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_33",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_30",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_30",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_12",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_12",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_10",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_10",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_01",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_01",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_9",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_9",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_19",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_19",
-      "fields": [
-        "x",
-        "y"
-      ]
-    },
-    {
-      "name": "horizontal_bar_chart_18",
-      "template": "d3-js/horizontal bar chart/horizontal_bar_chart_18",
-      "fields": [
-        "x",
-        "y"
+        "y",
+        "group"
       ]
     }
   ],
   "ai_direct_image": "buffer/20251123044738_9197/ai_direct_generated.jpg",
-  "final_image_path": "buffer/20251123044738_9197/ai_direct_generated.jpg",
+  "final_image_path": "buffer/App/edited_image.jpg",
   "selected_reference": "infographics/687b3947e993e6b28e70460a4d72ac6067b683b4471307bb5edbce559ab29bbb.png",
   "title_options": {
     "title_0.png": {
-      "title_text": "Tree Canopy Cover by Neighborhood Comparison",
-      "image_path": "buffer/Green/title_0.png",
+      "title_text": "App Store Growth: Google vs. iOS (2009-2013)",
+      "image_path": "buffer/App/title_0.png",
       "success": true
     },
     "title_1.png": {
-      "title_text": "Tree Canopy Cover by Neighborhood Comparison",
-      "image_path": "buffer/Green/title_1.png",
+      "title_text": "App Store Growth: Google vs. iOS (2009-2013)",
+      "image_path": "buffer/App/title_1.png",
       "success": true
     },
     "title_2.png": {
-      "title_text": "Tree Canopy Cover by Neighborhood Comparison",
-      "image_path": "buffer/Green/title_2.png",
+      "title_text": "App Store Growth: Google vs. iOS (2009-2013)",
+      "image_path": "buffer/App/title_2.png",
       "success": true
     }
   },
-  "current_title_text": "Tree Canopy Cover by Neighborhood Comparison",
+  "current_title_text": "App Store Growth: Google vs. iOS (2009-2013)",
   "pictogram_options": {
     "pictogram_0.png": {
       "pictogram_prompt": "Cached",
-      "image_path": "buffer/Green/pictogram_0.png",
+      "image_path": "buffer/App/pictogram_0.png",
       "success": true
     },
     "pictogram_1.png": {
       "pictogram_prompt": "Cached",
-      "image_path": "buffer/Green/pictogram_1.png",
+      "image_path": "buffer/App/pictogram_1.png",
       "success": true
     },
     "pictogram_2.png": {
       "pictogram_prompt": "Cached",
-      "image_path": "buffer/Green/pictogram_2.png",
+      "image_path": "buffer/App/pictogram_2.png",
       "success": true
     }
   },
-  "reference_page": 0
+  "reference_page": 11
 }

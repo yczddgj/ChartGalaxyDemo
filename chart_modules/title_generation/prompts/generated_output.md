@@ -1,10 +1,5 @@
-Generate a text image with the content of "Tree Canopy Cover by Neighborhood Comparison". Generate an image with the text split into two lines: 
+Generate a text image with the content of "App Store Growth: Google vs iOS (2009-2013)". Create a text image with the title "App Store Growth: Google vs iOS (2009-2013)" divided into three lines. The first line should read "App Store Growth" in a large, bold font to emphasize its significance. The second line should have "Google vs iOS" in a slightly smaller, italicized font to indicate comparison without overwhelming the main title. The third line should contain the years "(2009-2013)" in a smaller, regular font, providing context.
 
-1. "Tree Canopy Cover" (main title)
-2. "by Neighborhood Comparison" (subtext)
+Highlight the key text "App Store Growth" by using an enlarged font size and a vibrant blue color to make it stand out from the rest of the title. In addition, consider replacing the letter "o" in "Google" with a small, simplified graphic of the Google Play store icon, giving a unique touch to the representation of the platform.
 
-Emphasize the key text "Tree Canopy Cover" by enlarging its font size and using a vibrant green color for it, contrasting against the subtext, which should be in a subdued gray tone. 
-
-For decoration, incorporate a tree icon in place of the letter "C" in the word "Canopy." The tree should be stylized and colorful, symbolizing foliage and sustainability, creating a visually engaging element. 
-
-Use a modern sans-serif font style that is clean and easily readable. Apply a slight shadow effect behind the text to enhance its depth and give it a floating appearance.
+Select a modern, sans-serif font style for clarity and approachability. Apply a subtle shadow effect to the text to create depth, ensuring that the title is visually appealing and easy to read. The overall composition should be centered, with ample spacing between the lines for legibility while maintaining a professional and engaging look.

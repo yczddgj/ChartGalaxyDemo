@@ -15,6 +15,7 @@ import hashlib
 import shutil
 from pathlib import Path
 from datetime import datetime
+import difflib
 
 project_root = Path(__file__).parent.parent  # 根据实际结构调整
 sys.path.append("ChartPipeline")
@@ -366,6 +367,18 @@ def get_chart_types():
 
     # 按照 parsed_variations.json 的顺序筛选和排序
     chart_types = []
+    
+    # 获取所有示意图文件
+    chart_type_images = {}
+    static_chart_types_dir = os.path.join(app.root_path, 'static', 'chart_types')
+    if os.path.exists(static_chart_types_dir):
+        files = os.listdir(static_chart_types_dir)
+        for f in files:
+            if f.lower().endswith('.png'):
+                # Key is lowercase filename without extension
+                key = f.lower().replace('.png', '')
+                chart_type_images[key] = f
+
     for parsed_item in PARSED_VARIATIONS:
         chart_type_name = parsed_item['name']
         # 只保留在 extraction_templates 中出现的 chart type
@@ -377,10 +390,42 @@ def get_chart_types():
                 if len(parts) >= 2 and parts[1] == chart_type_name:
                     representative_template = template[0]
                     break
+            
+            # Find matching image
+            image_filename = None
+            search_name = chart_type_name.lower()
+            
+            # 1. Try exact match (lowercase)
+            if search_name in chart_type_images:
+                image_filename = chart_type_images[search_name]
+            else:
+                # 2. Try fuzzy match
+                matches = difflib.get_close_matches(search_name, chart_type_images.keys(), n=1, cutoff=0.8)
+                if matches:
+                    image_filename = chart_type_images[matches[0]]
+                
+                # 3. If not found and contains "multiple", try removing "multiple"
+                if not image_filename and 'multiple' in search_name:
+                    # Remove 'multiple' and 'small' (often appear together) and extra spaces
+                    stripped_name = search_name.replace('multiple', '').replace('small', '').strip()
+                    # Clean up double spaces if any
+                    stripped_name = ' '.join(stripped_name.split())
+                    
+                    # Try exact match with stripped name
+                    if stripped_name in chart_type_images:
+                        image_filename = chart_type_images[stripped_name]
+                    else:
+                        # Try fuzzy match with stripped name
+                        matches = difflib.get_close_matches(stripped_name, chart_type_images.keys(), n=1, cutoff=0.8)
+                        if matches:
+                            image_filename = chart_type_images[matches[0]]
+            
+            image_url = f"/static/chart_types/{image_filename}" if image_filename else None
 
             chart_types.append({
                 'type': chart_type_name,
-                'template': representative_template
+                'template': representative_template,
+                'image_url': image_url
             })
 
     # 保存到 generation_status
@@ -424,8 +469,8 @@ def generate_chart_type_previews():
     print(f"[DEBUG API] extraction_templates 数量: {len(generation_status.get('extraction_templates', []))}")
 
     # 启动预览生成线程
-    thread = Thread(target=threaded_task, args=(conduct_chart_type_preview_generation, current_page_types, generation_status,))
-    thread.start()
+    # thread = Thread(target=threaded_task, args=(conduct_chart_type_preview_generation, current_page_types, generation_status,))
+    # thread.start()
 
     return jsonify({'status': 'started', 'chart_types': current_page_types})
 
@@ -487,6 +532,10 @@ def select_chart_type(chart_type):
     # 按照 parsed_variations.json 的顺序排序
     variations = []
     for variation_name in parsed_variations_for_type:
+        # 过滤掉名称中包含 'plain' 的样式
+        if 'plain' in variation_name.lower():
+            continue
+            
         if variation_name in available_variation_templates:
             variations.append(available_variation_templates[variation_name])
 
@@ -579,9 +628,8 @@ def get_references():
     datafile = selected_data.replace('processed_data/', '').replace('.json', '.csv') if selected_data else ''
 
     # 获取分页参数
-    page = 0
-    # page = generation_status.get('reference_page', 0)
-    page_size = 5
+    page = generation_status.get('reference_page', 0)
+    page_size = 3
 
     if datafile:
         # 根据主题相似性排序
@@ -632,7 +680,7 @@ def get_next_references():
         return jsonify({'status': 'error', 'message': 'No data file selected'}), 400
     
     page = generation_status.get('reference_page', 0)
-    page_size = 5
+    page_size = 3
     total_pages = (len(sorted_images) + page_size - 1) // page_size
 
     # 加载下一页（不循环）
