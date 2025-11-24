@@ -4,3 +4,4 @@ tmp/
 __pycache__
 /frontend/node_modules
 generation_status_cache.json
+buffer/
