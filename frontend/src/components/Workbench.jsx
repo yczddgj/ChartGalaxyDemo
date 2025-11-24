@@ -32,29 +32,36 @@ function Workbench() {
   const [previewTimestamp, setPreviewTimestamp] = useState(Date.now());
 
   // --- State: Edit Panel ---
-  const [showEditPanel, setShowEditPanel] = useState(false);
+  const [showEditPanel, setShowEditPanel] = useState(true); // Always show edit panel
   const [bgColor, setBgColor] = useState('#ffffff');
   const [editConfig, setEditConfig] = useState({
     colorScheme: 'default',
     textSize: 'medium',
     textStyle: 'normal',
-    prompt: `You are given two images:
+    prompt: `You are an expert infographic designer. You are given a chart/data visualization image.
+Your task is to transform this chart into a beautiful, professional infographic with the following requirements:
 
-1. **Reference Image**: An infographic with a specific visual style (colors, layout, typography, design elements)
-2. **Current Image**: A newly generated infographic that needs to be refined
+**Content Requirements:**
+- **DO NOT modify the data, numbers, labels, or any information** shown in the chart
+- Keep all chart values, axes, legends, and data points exactly as they appear
+- Preserve the chart type and structure
 
-Your task is to refine the Current Image by applying the visual style from the Reference Image, while preserving all the data, content, and information from the Current Image.
+**Visual Enhancement:**
+- Add a professional, eye-catching design with modern aesthetics
+- Use a harmonious color palette that enhances readability
+- Add appropriate decorative elements, icons, or illustrations
+- Create a clean, well-organized layout
+- Use professional typography for titles and labels
+- Add subtle backgrounds or patterns if appropriate
+- Ensure visual consistency throughout the design
 
-Specifically:
-- Match the color palette from the Reference Image
-- Apply similar design aesthetics (shapes, icons, decorative elements)
-- Use similar typography style if applicable
-- Preserve the layout structure of the Current Image
-- Fix visual defects (blurry text, distorted shapes)
-- Ensure stability and consistency of **title, chart, pictogram**
-- Keep the core content of **title, chart, pictogram** from the Current Image unchanged
+**Quality Standards:**
+- High resolution and clarity
+- No blurry text or distorted elements
+- Professional and polished appearance
+- Suitable for presentation or publication
 
-Generate a high-quality infographic that looks like it was created with the same design system as the Reference Image.`
+Generate a stunning infographic that transforms the raw chart into a visually appealing, professional design while keeping all the data intact.`
   });
   
   // --- State: Refine ---
@@ -333,7 +340,7 @@ Generate a high-quality infographic that looks like it was created with the same
     }
   };
 
-  const pollStatus = (callback, targetStep) => {
+  const pollStatus = (callback, targetStep, autoStopLoading = true) => {
     const interval = setInterval(async () => {
       try {
         const res = await axios.get('/api/status');
@@ -346,7 +353,9 @@ Generate a high-quality infographic that looks like it was created with the same
 
         if (completed) {
           clearInterval(interval);
-          setLoading(false);
+          if (autoStopLoading) {
+            setLoading(false);
+          }
           callback(res.data);
         }
       } catch (err) {
@@ -545,7 +554,7 @@ Generate a high-quality infographic that looks like it was created with the same
       pollStatus(async () => {
           // 2. Generate Title
           await generateTitle();
-      }, 'layout_extraction');
+      }, 'layout_extraction', false);
     } catch (err) {
       console.error(err);
       setLoading(false);
@@ -590,6 +599,7 @@ Generate a high-quality infographic that looks like it was created with the same
   };
 
   const generateTitle = async () => {
+      setLoading(true);
       setLoadingText('Generating title...');
       try {
           await axios.get(`/api/start_title_generation/${selectedFile}`);
@@ -610,7 +620,7 @@ Generate a high-quality infographic that looks like it was created with the same
                                 : (statusData.selected_title || 'InfoGraphic');
                                 
               await generatePictogram(titleText, newTitleImage);
-          }, 'title_generation');
+          }, 'title_generation', false);
       } catch (err) {
           console.error(err);
           setLoading(false);
@@ -637,6 +647,7 @@ Generate a high-quality infographic that looks like it was created with the same
   };
 
   const generatePictogram = async (titleText, currentTitleImage = null) => {
+      setLoading(true);
       setLoadingText('Generating pictogram...');
       try {
           // If titleText is not provided (e.g. manual regeneration), try to get it or use default
@@ -684,7 +695,7 @@ Generate a high-quality infographic that looks like it was created with the same
                   // Actually, React state updates trigger re-renders and then useEffects.
                   // So the existing useEffect should handle it.
               }
-          }, 'pictogram_generation');
+          }, 'pictogram_generation', true);
       } catch (err) {
           console.error(err);
           setLoading(false);
@@ -734,6 +745,56 @@ Generate a high-quality infographic that looks like it was created with the same
           loadChartToCanvas(selectedVariation, `/currentfilepath/variation_${selectedVariation}.png`, shouldPreservePositions);
       }
   }, [canvas, titleImage, selectedPictograms, selectedVariation]);
+
+  // Auto-load refinement history when both title and pictogram are available
+  useEffect(() => {
+      const loadRefinementHistory = async () => {
+          // Only load history if we have all required materials
+          if (!titleImage || !selectedPictograms || selectedPictograms.length === 0 || !selectedVariation) {
+              return;
+          }
+
+          console.log('Loading refinement history for materials:', {
+              titleImage,
+              pictogram: selectedPictograms[0],
+              chart_type: selectedVariation
+          });
+
+          try {
+              const response = await axios.post('/api/material_history', {
+                  title: titleImage,
+                  pictogram: selectedPictograms[0],
+                  chart_type: selectedVariation
+              });
+
+              if (response.data.found && response.data.versions && response.data.versions.length > 0) {
+                  console.log(`Found ${response.data.total_versions} historical versions`);
+
+                  // Convert versions to refinedImages format
+                  const historyImages = response.data.versions.map(version => ({
+                      url: `/${version.url}?t=${Date.now()}`,
+                      timestamp: new Date(version.timestamp).getTime(),
+                      version: version.version,
+                      fromHistory: true
+                  }));
+
+                  // Set the refined images with history
+                  setRefinedImages(historyImages);
+
+                  console.log('Loaded refinement history:', historyImages.length, 'images');
+              } else {
+                  console.log('No refinement history found for these materials');
+                  // Clear refined images if no history
+                  setRefinedImages([]);
+              }
+          } catch (error) {
+              console.error('Failed to load refinement history:', error);
+              // Don't clear images on error, keep existing state
+          }
+      };
+
+      loadRefinementHistory();
+  }, [titleImage, selectedPictograms, selectedVariation]);
 
   // Note: Initial canvas state is saved in loadChartToCanvas function
   // This useEffect is kept as a backup but may not be needed
@@ -1210,11 +1271,11 @@ Generate a high-quality infographic that looks like it was created with the same
           alert('Canvas not initialized');
           return;
       }
-      
+
       setIsRefining(true);
       setLoading(true);
       setLoadingText('正在使用 AI 精修信息图表...');
-      
+
       try {
           // Export full canvas to PNG base64 (2x resolution)
           const pngDataURL = canvas.toDataURL({
@@ -1222,23 +1283,28 @@ Generate a high-quality infographic that looks like it was created with the same
               quality: 1,
               multiplier: 2
           });
-          
+
           // Get background color for backend processing
           const backgroundColor = canvas.backgroundColor || '#ffffff';
-          
+
           // Send to backend for refinement with auto-cropping
+          // Include material information for caching
           const response = await axios.post('/api/export_final', {
               png_base64: pngDataURL,
-              background_color: backgroundColor
+              background_color: backgroundColor,
+              title: titleImage,
+              pictogram: selectedPictograms.length > 0 ? selectedPictograms[0] : '',
+              chart_type: selectedVariation,
+              force_regenerate: true  // Always generate new version for AI refine button
           });
-          
+
           if (response.data.status === 'started') {
               // Poll for completion
               await pollRefinementStatus();
           } else {
               throw new Error(response.data.error || '生成失败');
           }
-          
+
       } catch (error) {
           console.error('Refine failed:', error);
           alert('精修失败: ' + error.message);
@@ -1251,40 +1317,65 @@ Generate a high-quality infographic that looks like it was created with the same
   const pollRefinementStatus = async () => {
       const maxAttempts = 120; // Max 2 minutes
       let attempts = 0;
-      
+
       while (attempts < maxAttempts) {
           try {
               const response = await axios.get('/api/status');
               const status = response.data;
-              
+
               // Update loading text with progress
               if (status.progress) {
                   setLoadingText(status.progress);
               }
-              
+
               if (status.step === 'final_export' && status.completed) {
                   if (status.status === 'completed') {
-                      // Success! Add refined image to the list
-                      const refinedUrl = `/api/download_final?t=${Date.now()}`;
-                      setRefinedImages(prev => [...prev, {
-                          url: refinedUrl,
-                          timestamp: Date.now()
-                      }]);
-                      // Keep edit panel open to show the result
+                      // Success! Reload the refinement history to get the new version
+                      console.log('Refinement completed, reloading history...');
+
+                      // Reload history after successful refinement
+                      try {
+                          const historyResponse = await axios.post('/api/material_history', {
+                              title: titleImage,
+                              pictogram: selectedPictograms.length > 0 ? selectedPictograms[0] : '',
+                              chart_type: selectedVariation
+                          });
+
+                          if (historyResponse.data.found && historyResponse.data.versions && historyResponse.data.versions.length > 0) {
+                              const historyImages = historyResponse.data.versions.map(version => ({
+                                  url: `/${version.url}?t=${Date.now()}`,
+                                  timestamp: new Date(version.timestamp).getTime(),
+                                  version: version.version,
+                                  fromHistory: true
+                              }));
+
+                              setRefinedImages(historyImages);
+                              console.log('Reloaded history:', historyImages.length, 'images');
+                          }
+                      } catch (historyError) {
+                          console.error('Failed to reload history:', historyError);
+                          // Fallback: add just the new image
+                          const refinedUrl = `/api/download_final?t=${Date.now()}`;
+                          setRefinedImages(prev => [...prev, {
+                              url: refinedUrl,
+                              timestamp: Date.now()
+                          }]);
+                      }
+
                       return;
                   } else if (status.status === 'error') {
                       throw new Error(status.progress || '精修失败');
                   }
               }
-              
+
           } catch (error) {
               console.error('Status check failed:', error);
           }
-          
+
           await new Promise(resolve => setTimeout(resolve, 1000));
           attempts++;
       }
-      
+
       throw new Error('精修超时，请重试');
   };
   
@@ -1627,18 +1718,11 @@ Generate a high-quality infographic that looks like it was created with the same
           </button>
         </div>
         
-        {/* Edit Button */}
-        <button className="edit-fab" onClick={() => setShowEditPanel(!showEditPanel)}>
-            进一步编辑
-        </button>
-
-        {/* Edit Panel (Floating) */}
-        {showEditPanel && (
-            <div className="edit-panel">
-                <div className="edit-panel-header">
-                    <span>✏️ 进一步编辑</span>
-                    <button className="close-btn" onClick={() => { setShowEditPanel(false); }}>×</button>
-                </div>
+        {/* Edit Panel (Always Visible, Fixed at Bottom) */}
+        <div className="edit-panel">
+            <div className="edit-panel-header">
+                <span>✏️ 编辑</span>
+            </div>
                 
                 <div className="edit-panel-content">
                 {/* Left Column: Controls */}
@@ -1663,12 +1747,12 @@ Generate a high-quality infographic that looks like it was created with the same
                             ))}
                         </div>
                         <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-                            <input 
-                                type="color" 
-                                value={bgColor} 
+                            <input
+                                type="color"
+                                value={bgColor}
                                 onChange={(e) => handleBgColorChange(e.target.value)}
                                 style={{
-                                    width: '50px',
+                                    width: '35px',
                                     height: '36px',
                                     border: '1px solid var(--border-color)',
                                     borderRadius: '6px',
@@ -1676,9 +1760,9 @@ Generate a high-quality infographic that looks like it was created with the same
                                     padding: '2px'
                                 }}
                             />
-                            <input 
-                                type="text" 
-                                value={bgColor} 
+                            <input
+                                type="text"
+                                value={bgColor}
                                 onChange={(e) => {
                                     const value = e.target.value;
                                     if (/^#[0-9A-Fa-f]{0,6}$/.test(value)) {
@@ -1690,7 +1774,7 @@ Generate a high-quality infographic that looks like it was created with the same
                                 }}
                                 placeholder="#ffffff"
                                 style={{
-                                    flex: 1,
+                                    width: '90px',
                                     padding: '8px 12px',
                                     border: '1px solid var(--border-color)',
                                     borderRadius: '6px',
@@ -1788,7 +1872,6 @@ Generate a high-quality infographic that looks like it was created with the same
                 </div>
                 </div>
             </div>
-        )}
       </div>
 
       {/* Loading Overlay */}

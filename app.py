@@ -24,7 +24,7 @@ sys.path.append("ChartPipeline")
 from chart_modules.util import image_to_base64, find_free_port, get_csv_files, read_csv_data, get_sorted_infographics_by_theme, parse_reference_layout
 from chart_modules.generate_variation import generate_variation
 from chart_modules.process import conduct_reference_finding, conduct_layout_extraction, conduct_title_generation, conduct_pictogram_generation, conduct_chart_type_preview_generation, conduct_variation_preview_generation
-from chart_modules.style_refinement import process_final_export, direct_generate_with_ai, svg_to_png
+from chart_modules.style_refinement import process_final_export, direct_generate_with_ai, svg_to_png, check_material_cache
 from chart_modules.ChartPipeline.modules.infographics_generator.template_utils import block_list
 
 
@@ -803,6 +803,14 @@ def export_final():
         png_base64 = data.get('png_base64')
         background_color = data.get('background_color', '#ffffff')
 
+        # 从前端接收素材信息
+        title = data.get('title', '')
+        pictogram = data.get('pictogram', '')
+        chart_type = data.get('chart_type', '')
+
+        # 是否强制重新生成（AI精修按钮传true，进一步编辑传false）
+        force_regenerate = data.get('force_regenerate', False)
+
         if not png_base64:
             return jsonify({'error': '缺少 PNG 数据'}), 400
 
@@ -816,12 +824,33 @@ def export_final():
         if not session_id:
             return jsonify({'error': '会话 ID 不存在'}), 400
 
+        # 构建素材信息
+        materials = {
+            'title': title,
+            'pictogram': pictogram,
+            'reference': reference_image_path,
+            'chart_type': chart_type
+        }
+
+        # 获取当前选中的variation
+        variations = generation_status.get('available_variations', [])
+        for v in variations:
+            if v['name'] == chart_type:
+                materials['variation'] = v['name']
+                break
+
         # 启动后台线程处理导出
         def export_task():
             try:
                 generation_status['step'] = 'final_export'
                 generation_status['status'] = 'processing'
-                generation_status['progress'] = '正在保存图片...'
+
+                # 根据是否强制重新生成设置不同的提示
+                if force_regenerate:
+                    generation_status['progress'] = '正在AI精修...'
+                else:
+                    generation_status['progress'] = '正在加载...'
+
                 generation_status['completed'] = False
                 save_generation_status()
 
@@ -830,12 +859,20 @@ def export_final():
                     png_base64=png_base64,
                     reference_image_path=reference_image_path,
                     session_id=session_id,
-                    background_color=background_color
+                    background_color=background_color,
+                    materials=materials,
+                    force_regenerate=force_regenerate
                 )
 
                 if result['success']:
                     generation_status['status'] = 'completed'
-                    generation_status['progress'] = '导出完成！'
+                    if result.get('from_cache'):
+                        generation_status['progress'] = f"加载完成！（版本{result.get('version', 1)}）"
+                    else:
+                        # 获取新版本号
+                        cache_info = result.get('cache_info', {})
+                        version = cache_info.get('version', 1)
+                        generation_status['progress'] = f"AI精修完成！（版本{version}）"
                     generation_status['final_image_path'] = result['image_path']
                 else:
                     generation_status['status'] = 'error'
@@ -876,6 +913,14 @@ def ai_direct_generate():
         chart_svg = data.get('chart_svg')
         data_file = data.get('data_file')
 
+        # 从前端接收素材信息
+        title = data.get('title', '')
+        pictogram = data.get('pictogram', '')
+        chart_type = data.get('chart_type', '')
+
+        # 是否强制重新生成（AI精修按钮传true，进一步编辑传false）
+        force_regenerate = data.get('force_regenerate', False)
+
         if not chart_svg:
             return jsonify({'status': 'error', 'message': '缺少图表SVG数据'}), 400
 
@@ -884,49 +929,19 @@ def ai_direct_generate():
         if not session_id:
             return jsonify({'status': 'error', 'message': '会话ID不存在，请先选择数据'}), 400
 
-        # 计算SVG内容的hash作为缓存key
-        cache_key = hashlib.sha256(chart_svg.encode('utf-8')).hexdigest()
-        cache_dir = "buffer/generation_cache/ai_direct"
-        cache_json_path = "buffer/generation_cache/ai_direct_cache.json"
-        os.makedirs(cache_dir, exist_ok=True)
+        # 构建素材信息（AI直接生成不使用参考图）
+        materials = {
+            'title': title,
+            'pictogram': pictogram,
+            'chart_type': chart_type
+        }
 
-        # 加载缓存
-        cache_data = {}
-        if os.path.exists(cache_json_path):
-            with open(cache_json_path, 'r', encoding='utf-8') as f:
-                cache_data = json.load(f)
-
-        # 检查缓存是否存在
-        if cache_key in cache_data and os.path.exists(cache_data[cache_key]['cache_path']):
-            print(f"[缓存命中] 使用缓存的AI生成结果: {cache_key}")
-            cached_image_path = cache_data[cache_key]['cache_path']
-
-            # 复制缓存图片到当前session目录
-            buffer_dir = f"buffer/{session_id}"
-            os.makedirs(buffer_dir, exist_ok=True)
-            output_path = os.path.join(buffer_dir, "ai_direct_generated.jpg")
-            shutil.copy2(cached_image_path, output_path)
-
-            # 更新状态
-            generation_status['ai_direct_image'] = output_path
-            generation_status['final_image_path'] = output_path
-            generation_status['step'] = 'ai_direct_generate'
-            generation_status['completed'] = True
-            save_generation_status()
-
-            # 返回通过 /currentfilepath/ 可访问的路径
-            filename = os.path.basename(output_path)
-            accessible_path = f'currentfilepath/{filename}'
-
-            return jsonify({
-                'status': 'success',
-                'image_path': accessible_path,
-                'result_image': accessible_path,
-                'from_cache': True
-            })
-
-        # 缓存未命中，执行AI生成
-        print(f"[缓存未命中] 开始AI直接生成: {cache_key}")
+        # 获取当前选中的variation
+        variations = generation_status.get('available_variations', [])
+        for v in variations:
+            if v['name'] == chart_type:
+                materials['variation'] = v['name']
+                break
 
         buffer_dir = f"buffer/{session_id}"
         os.makedirs(buffer_dir, exist_ok=True)
@@ -943,28 +958,20 @@ def ai_direct_generate():
         if not svg_to_png(chart_svg, chart_png_path):
             return jsonify({'status': 'error', 'message': 'SVG转PNG失败'}), 500
 
-        # 2. 使用AI直接生成
+        # 2. 使用AI直接生成（包含素材缓存检查）
         output_path = os.path.join(buffer_dir, "ai_direct_generated.jpg")
 
         print(f"开始AI直接生成，图表路径: {chart_png_path}")
-        result = direct_generate_with_ai(chart_png_path, output_path)
+        print(f"force_regenerate: {force_regenerate}")
+
+        result = direct_generate_with_ai(
+            chart_png_path,
+            output_path,
+            materials=materials,
+            force_regenerate=force_regenerate
+        )
 
         if result['success']:
-            # 保存到缓存
-            cache_image_path = os.path.join(cache_dir, f"{cache_key}.jpg")
-            shutil.copy2(result['image_path'], cache_image_path)
-
-            cache_data[cache_key] = {
-                'cache_path': cache_image_path,
-                'timestamp': datetime.now().isoformat(),
-                'success': True
-            }
-
-            with open(cache_json_path, 'w', encoding='utf-8') as f:
-                json.dump(cache_data, f, indent=2, ensure_ascii=False)
-
-            print(f"[已缓存] AI生成结果已保存到缓存: {cache_key}")
-
             # 更新状态
             generation_status['ai_direct_image'] = result['image_path']
             generation_status['final_image_path'] = result['image_path']
@@ -980,7 +987,9 @@ def ai_direct_generate():
                 'status': 'success',
                 'image_path': accessible_path,
                 'result_image': accessible_path,
-                'from_cache': False
+                'from_cache': result.get('from_cache', False),
+                'version': result.get('version'),
+                'total_versions': result.get('total_versions')
             })
         else:
             return jsonify({
@@ -1012,6 +1021,82 @@ def download_final():
     filename = os.path.basename(final_image_path)
 
     return send_from_directory(directory, filename, as_attachment=True)
+
+@app.route('/api/material_history', methods=['POST'])
+def get_material_history():
+    """
+    获取指定素材组合的所有精修历史版本
+    """
+    global generation_status
+    load_generation_status()
+
+    try:
+        data = request.json
+        title = data.get('title', '')
+        pictogram = data.get('pictogram', '')
+        chart_type = data.get('chart_type', '')
+
+        # 获取参考图
+        reference_image_path = generation_status.get('selected_reference')
+
+        # 构建素材信息
+        materials = {
+            'title': title,
+            'pictogram': pictogram,
+            'reference': reference_image_path,
+            'chart_type': chart_type
+        }
+
+        # 获取variation
+        variations = generation_status.get('available_variations', [])
+        for v in variations:
+            if v['name'] == chart_type:
+                materials['variation'] = v['name']
+                break
+
+        # 检查缓存历史
+        cache_result = check_material_cache(materials)
+
+        if cache_result.get('found'):
+            # 转换路径为可访问的URL
+            session_id = generation_status.get('id')
+            all_versions = []
+
+            for version in cache_result['all_versions']:
+                # 复制到当前session目录以便访问
+                cache_path = version['cache_path']
+                version_number = version['version']
+                accessible_filename = f"history_v{version_number}.jpg"
+                accessible_path = f"buffer/{session_id}/{accessible_filename}"
+
+                # 复制文件
+                os.makedirs(os.path.dirname(accessible_path), exist_ok=True)
+                shutil.copy2(cache_path, accessible_path)
+
+                all_versions.append({
+                    'version': version_number,
+                    'url': f'currentfilepath/{accessible_filename}',
+                    'timestamp': version.get('timestamp'),
+                    'method': version.get('method')
+                })
+
+            return jsonify({
+                'found': True,
+                'total_versions': cache_result['total_versions'],
+                'versions': all_versions
+            })
+        else:
+            return jsonify({
+                'found': False,
+                'total_versions': 0,
+                'versions': []
+            })
+
+    except Exception as e:
+        print(f"获取素材历史失败: {e}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/files')
 def get_files():
