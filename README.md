@@ -1,6 +1,6 @@
 # 图表银河 - 信息图表生成器
 
-这是一个基于Flask的精美网页应用，用于展示数据并生成信息图表。
+这是一个前后端分离的应用：后端基于 Flask，前端位于 `frontend/` 目录并使用现代化 React 工作台来展示数据与生成信息图表。
 
 ## 功能特点
 
@@ -11,6 +11,8 @@
 - 📱 **响应式设计** - 适配不同屏幕尺寸
 
 ## 安装和运行
+
+### 后端（Flask）
 
 1. 安装依赖：
 ```bash
@@ -27,7 +29,22 @@ python app.py
 http://localhost:5000
 ```
 
-## 使用方法
+### 前端（React）
+
+1. 安装依赖：
+```bash
+cd frontend
+npm install
+```
+
+2. 启动开发服务器：
+```bash
+npm run dev
+```
+
+默认通过 `http://localhost:5173` 访问前端界面，前端会通过代理与 Flask 后端交互。
+
+## 使用方法（前端）
 
 1. 在"数据选择与预览"区域选择一个数据集
 2. 查看数据表格预览
@@ -39,17 +56,17 @@ http://localhost:5000
 
 ```
 ChartGalaxyDemo/
-├── app.py              # Flask应用主文件
-├── requirements.txt    # Python依赖
-├── templates/
-│   └── index.html     # 主页模板
-├── processed_data/     # CSV数据文件
-└── infographics/      # PNG图片文件
+├── app.py                      # Flask后端入口
+├── requirements.txt            # Python依赖
+├── templates/                  # 后端模板（保留）
+├── processed_data/             # CSV数据文件
+├── infographics/               # PNG图片文件
+└── frontend/                   # React 前端
 ```
 
 ## 技术栈
 
 - **后端**: Python Flask
-- **前端**: HTML5, CSS3, JavaScript
+- **前端**: React + Vite + Fabric.js
 - **数据处理**: Pandas
 - **UI设计**: 现代化渐变设计 
