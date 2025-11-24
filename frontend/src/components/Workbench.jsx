@@ -1306,6 +1306,59 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
     }
   };
 
+  const handleDownloadCanvas = () => {
+    if (!canvas) return;
+    const objects = canvas.getObjects().filter(obj => obj.visible);
+    if (!objects.length) {
+      alert('画布中没有可导出的元素');
+      return;
+    }
+
+    const padding = 8;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    objects.forEach(obj => {
+      const rect = obj.getBoundingRect(true, true);
+      minX = Math.min(minX, rect.left);
+      minY = Math.min(minY, rect.top);
+      maxX = Math.max(maxX, rect.left + rect.width);
+      maxY = Math.max(maxY, rect.top + rect.height);
+    });
+
+    if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
+      alert('无法计算画布范围，请重试');
+      return;
+    }
+
+    const left = Math.max(Math.floor(minX - padding), 0);
+    const top = Math.max(Math.floor(minY - padding), 0);
+    const right = Math.min(Math.ceil(maxX + padding), canvas.getWidth());
+    const bottom = Math.min(Math.ceil(maxY + padding), canvas.getHeight());
+    const width = Math.max(right - left, 1);
+    const height = Math.max(bottom - top, 1);
+
+    const dataUrl = canvas.toDataURL({
+      format: 'png',
+      quality: 1,
+      multiplier: 2,
+      left,
+      top,
+      width,
+      height,
+      enableRetinaScaling: true
+    });
+
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `workbench_canvas_${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // --- Background Color Management ---
   const handleBgColorChange = (color) => {
       if (!canvas) return;
@@ -1906,6 +1959,24 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
             title="删除选中元素 (Delete)"
           >
             🗑️ 删除
+          </button>
+          <button
+            onClick={handleDownloadCanvas}
+            disabled={!canvas}
+            style={{
+              padding: '8px 16px',
+              background: !canvas ? '#e0e0e0' : '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: !canvas ? 'not-allowed' : 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              opacity: !canvas ? 0.5 : 1
+            }}
+            title="裁剪导出当前画布内容"
+          >
+            ⬇️ 下载画布
           </button>
         </div>
 
