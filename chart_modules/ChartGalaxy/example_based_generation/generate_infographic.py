@@ -15,6 +15,7 @@ from pathlib import Path
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
+import random
 
 sys.path.append(str(Path(__file__).parent))
 # 添加标题生成模块的路径
@@ -48,6 +49,23 @@ class InfographicImageGenerator:
         # output_dir 将在运行时被设置为 buffer/{dataset_name}
         self.output_dir = None
         self.prompts_dir = "."
+        self.prompt_variations = {
+            "title_font_style": [
+                "geometric sans-serif letters with softened corners",
+                "condensed art-deco inspired uppercase with fine inline gaps",
+                "humanist serif glyphs with sculpted terminals"
+            ],
+            "title_art_effect": [
+                "subtle debossed relief casting a soft paper-grain shadow",
+                "glossy gradient highlight that brushes across the emphasized word",
+                "engraved outline with a faint inner glow from the baseline upward"
+            ],
+            "pictogram_content": [
+                "an image representing a theme composed of several concrete objects",
+                "an object related to the theme and some decorative elements around it",
+                "aesthetically pleasing and design-oriented images that combine several key words from the theme"
+            ]
+        }
 
     def load_prompt_file(self, filename: str) -> str:
         """Load prompt file content"""
@@ -99,6 +117,13 @@ class InfographicImageGenerator:
             print(f"Failed to generate title text: {e}")
             return "Data Insights"
     
+    def _get_random_prompt_variation(self, key: str) -> str:
+        """Randomly pick a snippet for the given variation key."""
+        options = self.prompt_variations.get(key)
+        if not options:
+            return ""
+        return random.choice(options)
+    
     def generate_image_prompt(self, title: str, prompt_type: str, color=None, style_description: str = None) -> str:
         """Generate image generation prompt
 
@@ -109,10 +134,19 @@ class InfographicImageGenerator:
             style_description: Optional style description from reference image
         """
         try:
+            color_text = f"{color}" if color else ""
             if prompt_type == "title":
                 # Read title prompt file and use GPT-4.1 to generate professional image prompt
                 title_prompt_template = self.load_prompt_file("generate_title_image_prompt.md")
-                title_prompt = title_prompt_template.replace("{title}", title).replace("{color}", f"{color}")
+                font_style_hint = self._get_random_prompt_variation("title_font_style")
+                art_effect_hint = self._get_random_prompt_variation("title_art_effect")
+                title_prompt = (
+                    title_prompt_template
+                    .replace("{title}", title)
+                    .replace("{color}", color_text)
+                    .replace("{font_style}", font_style_hint)
+                    .replace("{artistic_effect}", art_effect_hint)
+                )
 
                 response = self.client.chat.completions.create(
                     model="gpt-image-1",
@@ -129,7 +163,13 @@ class InfographicImageGenerator:
             elif prompt_type == "pictogram":
                 # 直接使用简化的 prompt 模板生成图片
                 pictogram_prompt_template = self.load_prompt_file("generate_pictogram_prompt.md")
-                prompt = pictogram_prompt_template.replace("{title}", title).replace("{color}", f"{color}")
+                content_variation = self._get_random_prompt_variation("pictogram_content")
+                prompt = (
+                    pictogram_prompt_template
+                    .replace("{title}", title)
+                    .replace("{color}", color_text)
+                    .replace("{content}", content_variation)
+                )
 
                 # 如果有参考图风格描述，添加到prompt中
                 if style_description:
@@ -224,7 +264,7 @@ class InfographicImageGenerator:
         base_filename = os.path.splitext(csv_file)[0]
         
         # Generate 4 images
-        for i in range(1):
+        for i in range(3):
             print(f"\nGenerating {i+1} set of images...")
 
             # Generate title text
