@@ -104,6 +104,17 @@ def get_sorted_infographics_by_theme(datafile):
     # 按相似性降序排序
     scored_images.sort(key=lambda x: x['similarity'], reverse=True)
 
+    if 'Space' in datafile:
+        space_origin_index = -1
+        for i, img in enumerate(scored_images):
+            if 'Space-Origin' in img['filename']:
+                space_origin_index = i
+                break
+        
+        if space_origin_index != -1:
+            space_origin = scored_images.pop(space_origin_index)
+            scored_images.insert(0, space_origin)
+
     return scored_images
 
 # 获取processed_data文件夹中的所有CSV文件

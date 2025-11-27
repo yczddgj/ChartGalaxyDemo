@@ -20,7 +20,9 @@ In this aspect, you will decide whether to **decorate the text with icons**. You
 ## Font Style and Artistic Effects
 In this aspect, you will decide the **font style and artistic effects** for the text. You need to judge whether "{title}" is suitable for a specific font style (e.g., classical, futuristic, anime-style, etc.) and certain artistic text effects (e.g., cracks on the text surface, melting text, etc.). If applicable, please provide:
 1. The font style, such as classical, futuristic, anime-style, etc.
+   - Follow this font style direction: {font_style}
 2. The artistic effect, such as cracks on the text surface, melting text, burning text, etc.
+   - Apply this artistic effect: {artistic_effect}
 3. The background should be **pure white**.
 4. In addition, you must ensure that the font color used in the title is selected strictly from the following RGB values:
 {color}. Any icons or decorative elements used within the text must also use colors exclusively from this same palette.

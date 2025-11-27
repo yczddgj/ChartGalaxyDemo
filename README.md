@@ -1,6 +1,6 @@
-# 图表银河 - 信息图表生成器
+# ChartGalaxy - 信息图表生成器
 
-这是一个基于Flask的精美网页应用，用于展示数据并生成信息图表。
+这是一个前后端分离的应用：后端基于 Flask，前端位于 `frontend/` 目录并使用现代化 React 工作台来展示数据与生成信息图表。
 
 ## 功能特点
 
@@ -12,6 +12,8 @@
 
 ## 安装和运行
 
+### 后端（Flask）
+
 1. 安装依赖：
 ```bash
 pip install -r requirements.txt
@@ -22,34 +24,36 @@ pip install -r requirements.txt
 python app.py
 ```
 
-3. 在浏览器中访问：
-```
-http://localhost:5000
+### 前端（React）
+
+1. 安装依赖：
+```bash
+cd frontend
+npm install
 ```
 
-## 使用方法
+2. 启动开发服务器：
+```bash
+npm run dev
+```
+
+默认通过 `http://localhost:5173` 访问前端界面，前端会通过代理与 Flask 后端交互。
+
+## 使用方法（前端）
 
 1. 在"数据选择与预览"区域选择一个数据集
 2. 查看数据表格预览
-3. 点击"生成信息图表"按钮
-4. 等待生成过程完成（约5秒）
-5. 查看生成的精美信息图表
+3. 选择合适的图表样式、标题和配图素材
+4. 调整素材位置
+5. 查看生成的信息图表
+6. 使用大模型进行精修
 
-## 文件结构
-
-```
-ChartGalaxyDemo/
-├── app.py              # Flask应用主文件
-├── requirements.txt    # Python依赖
-├── templates/
-│   └── index.html     # 主页模板
-├── processed_data/     # CSV数据文件
-└── infographics/      # PNG图片文件
-```
 
 ## 技术栈
 
 - **后端**: Python Flask
-- **前端**: HTML5, CSS3, JavaScript
+- **前端**: React + Vite + Fabric.js
 - **数据处理**: Pandas
+
 - **UI设计**: 现代化渐变设计 
+

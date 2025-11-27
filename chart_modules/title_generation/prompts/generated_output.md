@@ -1,5 +1,8 @@
-Generate a text image with the content of "Average Commute Times by Transportation Mode". Create a text image centered around the title "Average Commute Times" on the first line and "by Transportation Mode" on the second line. The layout should maintain a total of two lines, with the first line being the main title. Emphasize the key phrase "Average Commute Times" by enlarging the font and applying a light yellowish tint color. The second line should be in a slightly smaller font size but still using the same color scheme for consistency.
+Generate a text image with the content of "Global Space Funding by Country, 2024". Global Space Funding  
+by Country, 2024  
 
-For decoration, incorporate a graphic of a clock icon to replace the letter "o" in "Commute". The clock will symbolize time, aligning with the message of the title. The icon should seamlessly blend with the text while contrasting against the background for visibility.
+The first line "Global Space Funding" should be emphasized with a larger font size to denote it as the main title. The second line "by Country, 2024" should be placed directly below the first line, center-aligned, in a slightly smaller size to create a visual hierarchy. 
 
-Select a bold, sans-serif font style that conveys a modern and professional tone. Apply a subtle drop shadow effect around the text to enhance readability against the background. The overall presentation should exude a clean and authoritative aesthetic, evoking a sense of professionalism and clarity.
+To add a decorative touch, incorporate a simple rocket icon to replace the letter "o" in the word "Global." The icon should be clean and minimalistic, matching the overall font style. 
+
+The chosen font style is sans-serif, bold, and modern, reflecting a futuristic theme appropriate for the space funding context. No additional artistic effects, such as shadows or glows, will be used to maintain a minimalistic and professional appearance. The color scheme will follow a dark gray or black for text to ensure strong contrast and clarity over the light background.

@@ -1,0 +1,59 @@
+{
+  "598cba7b18a919cae344268ab0ec78ab": {
+    "materials": {
+      "title": "title_0_abc123.png",
+      "pictogram": "pictogram_1_def456.png",
+      "reference": "infographics/Art-Origin.png",
+      "variation": "vertical_bar_chart_01",
+      "chart_type": "Vertical Bar Chart"
+    },
+    "versions": [
+      {
+        "version": 1,
+        "cache_path": "buffer/material_cache/598cba7b18a919cae344268ab0ec78ab_v1.jpg",
+        "method": "test",
+        "timestamp": "2025-11-23T15:36:13.074739",
+        "success": true
+      },
+      {
+        "version": 2,
+        "cache_path": "buffer/material_cache/598cba7b18a919cae344268ab0ec78ab_v2.jpg",
+        "method": "test",
+        "timestamp": "2025-11-23T15:36:13.075600",
+        "success": true
+      },
+      {
+        "version": 3,
+        "cache_path": "buffer/material_cache/598cba7b18a919cae344268ab0ec78ab_v3.jpg",
+        "method": "test",
+        "timestamp": "2025-11-23T15:36:13.076484",
+        "success": true
+      }
+    ]
+  },
+  "e65aa8477144101575803bb5a60a0c68": {
+    "materials": {
+      "title": "title_0_8141e84e.png",
+      "pictogram": "pictogram_0_df63be97.png",
+      "reference": "infographics/Commute-Origin.png",
+      "chart_type": "vertical_bar_chart_17_01",
+      "variation": "vertical_bar_chart_17_01"
+    },
+    "versions": [
+      {
+        "version": 1,
+        "cache_path": "buffer/material_cache/e65aa8477144101575803bb5a60a0c68_v1.jpg",
+        "method": "refine",
+        "timestamp": "2025-11-23T15:44:28.916376",
+        "success": true
+      },
+      {
+        "version": 2,
+        "cache_path": "buffer/material_cache/e65aa8477144101575803bb5a60a0c68_v2.jpg",
+        "method": "refine",
+        "timestamp": "2025-11-23T15:44:29.916376",
+        "success": true
+      }
+    ]
+  }
+}

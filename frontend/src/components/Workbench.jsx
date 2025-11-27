@@ -7,6 +7,8 @@ function Workbench() {
   // --- State: Data ---
   const [csvFiles, setCsvFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState('');
+  const [showDataPreview, setShowDataPreview] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
   
   // --- State: Chart Types ---
   const [chartTypes, setChartTypes] = useState([]);
@@ -29,30 +31,37 @@ function Workbench() {
   const [loadingText, setLoadingText] = useState('');
   const [previewTimestamp, setPreviewTimestamp] = useState(Date.now());
 
-  // --- State: Edit Panel ---
-  const [showEditPanel, setShowEditPanel] = useState(false);
+  // --- State: Sidebar / Edit Panel ---
+  const [sidebarView, setSidebarView] = useState('config');
   const [bgColor, setBgColor] = useState('#ffffff');
   const [editConfig, setEditConfig] = useState({
     colorScheme: 'default',
     textSize: 'medium',
     textStyle: 'normal',
-    prompt: `You are given two images:
+    prompt: `You are an expert infographic designer. You are given a chart/data visualization image.
+Your task is to transform this chart into a beautiful, professional infographic with the following requirements:
 
-1. **Reference Image**: An infographic with a specific visual style (colors, layout, typography, design elements)
-2. **Current Image**: A newly generated infographic that needs to be refined
+**Content Requirements:**
+- **DO NOT modify the data, numbers, labels, or any information** shown in the chart
+- Keep all chart values, axes, legends, and data points exactly as they appear
+- Preserve the chart type and structure
 
-Your task is to refine the Current Image by applying the visual style from the Reference Image, while preserving all the data, content, and information from the Current Image.
+**Visual Enhancement:**
+- Add a professional, eye-catching design with modern aesthetics
+- Use a harmonious color palette that enhances readability
+- Add appropriate decorative elements, icons, or illustrations
+- Create a clean, well-organized layout
+- Use professional typography for titles and labels
+- Add subtle backgrounds or patterns if appropriate
+- Ensure visual consistency throughout the design
 
-Specifically:
-- Match the color palette from the Reference Image
-- Apply similar design aesthetics (shapes, icons, decorative elements)
-- Use similar typography style if applicable
-- Preserve the layout structure of the Current Image
-- Fix visual defects (blurry text, distorted shapes)
-- Ensure stability and consistency of **title, chart, pictogram**
-- Keep the core content of **title, chart, pictogram** from the Current Image unchanged
+**Quality Standards:**
+- High resolution and clarity
+- No blurry text or distorted elements
+- Professional and polished appearance
+- Suitable for presentation or publication
 
-Generate a high-quality infographic that looks like it was created with the same design system as the Reference Image.`
+Generate a stunning infographic that transforms the raw chart into a visually appealing, professional design while keeping all the data intact.`
   });
   
   // --- State: Refine ---
@@ -82,8 +91,58 @@ Generate a high-quality infographic that looks like it was created with the same
   // --- State: Undo/Redo History ---
   const [history, setHistory] = useState([]); // Array of canvas states (JSON strings)
   const [historyIndex, setHistoryIndex] = useState(-1); // Current position in history
+  const [snapshotCount, setSnapshotCount] = useState(0); // Track quick redo availability
   const maxHistorySize = 50; // Limit history size
+  const SNAPSHOT_LIMIT = 3;
+  const snapshotsRef = useRef([]); // Stores previous state JSONs for quick redo
   const historyRef = useRef({ history: [], historyIndex: -1 }); // Ref to access latest history
+
+  const clearSnapshots = () => {
+    if (snapshotsRef.current.length > 0) {
+      snapshotsRef.current = [];
+      setSnapshotCount(0);
+    }
+  };
+
+  const pushSnapshot = (stateJson) => {
+    if (!stateJson) return;
+    snapshotsRef.current = [...snapshotsRef.current, stateJson];
+    if (snapshotsRef.current.length > SNAPSHOT_LIMIT) {
+      snapshotsRef.current.shift();
+    }
+    setSnapshotCount(snapshotsRef.current.length);
+  };
+
+  const popSnapshot = () => {
+    if (!snapshotsRef.current.length) return null;
+    const json = snapshotsRef.current[snapshotsRef.current.length - 1];
+    snapshotsRef.current = snapshotsRef.current.slice(0, -1);
+    setSnapshotCount(snapshotsRef.current.length);
+    return json;
+  };
+
+  const loadStateFromJson = (stateJson) => {
+    if (!canvas || !stateJson) return;
+    canvas.loadFromJSON(stateJson, () => {
+      canvas.renderAll();
+      setHistory(prev => {
+        const currentIndex = historyRef.current.historyIndex;
+        const newHistory = prev.slice(0, currentIndex + 1);
+        newHistory.push(stateJson);
+        let newIndex;
+        if (newHistory.length > maxHistorySize) {
+          newHistory.shift();
+          newIndex = maxHistorySize - 1;
+        } else {
+          newIndex = newHistory.length - 1;
+        }
+        historyRef.current.history = newHistory;
+        historyRef.current.historyIndex = newIndex;
+        setHistoryIndex(newIndex);
+        return newHistory;
+      });
+    });
+  };
 
   // Sync historyRef with state
   useEffect(() => {
@@ -122,6 +181,10 @@ Generate a high-quality infographic that looks like it was created with the same
     // Save canvas state function
     const saveCanvasState = () => {
       if (!c) return;
+      const prevJson = historyRef.current.history[historyRef.current.historyIndex];
+      if (prevJson) {
+        pushSnapshot(prevJson);
+      }
       const json = JSON.stringify(c.toJSON());
       setHistory(prev => {
         const currentIndex = historyRef.current.historyIndex;
@@ -142,7 +205,9 @@ Generate a high-quality infographic that looks like it was created with the same
     // Undo function
     const performUndo = () => {
       if (!c || historyRef.current.historyIndex <= 0) return;
-      const newIndex = historyRef.current.historyIndex - 1;
+      const currentIndex = historyRef.current.historyIndex;
+      pushRedoIndex(currentIndex);
+      const newIndex = currentIndex - 1;
       const stateJson = historyRef.current.history[newIndex];
       if (stateJson) {
         c.loadFromJSON(stateJson, () => {
@@ -155,14 +220,15 @@ Generate a high-quality infographic that looks like it was created with the same
 
     // Redo function
     const performRedo = () => {
-      if (!c || historyRef.current.historyIndex >= historyRef.current.history.length - 1) return;
-      const newIndex = historyRef.current.historyIndex + 1;
-      const stateJson = historyRef.current.history[newIndex];
+      if (!c) return;
+      const redoIndex = popRedoIndex();
+      if (redoIndex == null) return;
+      const stateJson = historyRef.current.history[redoIndex];
       if (stateJson) {
         c.loadFromJSON(stateJson, () => {
           c.renderAll();
-          historyRef.current.historyIndex = newIndex;
-          setHistoryIndex(newIndex);
+          historyRef.current.historyIndex = redoIndex;
+          setHistoryIndex(redoIndex);
         });
       }
     };
@@ -292,6 +358,7 @@ Generate a high-quality infographic that looks like it was created with the same
     setHistoryIndex(-1);
     historyRef.current.history = [];
     historyRef.current.historyIndex = -1;
+    clearSnapshots();
 
     setSelectedFile(file);
     if (file) {
@@ -310,7 +377,28 @@ Generate a high-quality infographic that looks like it was created with the same
     }
   };
 
-  const pollStatus = (callback, targetStep) => {
+  // --- Logic: Data Preview ---
+  const handleDataPreview = async () => {
+    if (!selectedFile) {
+      alert('请先选择数据集');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setLoadingText('Loading data preview...');
+      const response = await axios.get(`/api/data/preview/${selectedFile}`);
+      setPreviewData(response.data);
+      setShowDataPreview(true);
+    } catch (err) {
+      console.error('Failed to load data preview:', err);
+      alert('无法加载数据预览');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pollStatus = (callback, targetStep, autoStopLoading = true) => {
     const interval = setInterval(async () => {
       try {
         const res = await axios.get('/api/status');
@@ -323,7 +411,9 @@ Generate a high-quality infographic that looks like it was created with the same
 
         if (completed) {
           clearInterval(interval);
-          setLoading(false);
+          if (autoStopLoading) {
+            setLoading(false);
+          }
           callback(res.data);
         }
       } catch (err) {
@@ -522,7 +612,7 @@ Generate a high-quality infographic that looks like it was created with the same
       pollStatus(async () => {
           // 2. Generate Title
           await generateTitle();
-      }, 'layout_extraction');
+      }, 'layout_extraction', false);
     } catch (err) {
       console.error(err);
       setLoading(false);
@@ -567,15 +657,19 @@ Generate a high-quality infographic that looks like it was created with the same
   };
 
   const generateTitle = async () => {
+      setLoading(true);
       setLoadingText('Generating title...');
       try {
           await axios.get(`/api/start_title_generation/${selectedFile}`);
           pollStatus(async (statusData) => {
               // Update title image state
-              const options = statusData.title_options ? Object.keys(statusData.title_options).sort() : ['title_0.png'];
+              const keys = statusData.title_options ? Object.keys(statusData.title_options).sort() : [];
+              const options = keys.length > 0 ? keys : ['title_0.png'];
               setTitleOptions(options);
               const newTitleImage = options[0];
-              setTitleImage(newTitleImage);
+              // Don't set title image yet, wait for pictogram
+              // setTitleImage(newTitleImage);
+              setPreviewTimestamp(Date.now()); // Force refresh images
               
               // 3. Generate Pictogram
               // Use the text from the first generated title
@@ -584,7 +678,7 @@ Generate a high-quality infographic that looks like it was created with the same
                                 : (statusData.selected_title || 'InfoGraphic');
                                 
               await generatePictogram(titleText, newTitleImage);
-          }, 'title_generation');
+          }, 'title_generation', false);
       } catch (err) {
           console.error(err);
           setLoading(false);
@@ -597,9 +691,11 @@ Generate a high-quality infographic that looks like it was created with the same
       try {
           await axios.get(`/api/regenerate_title/${selectedFile}`);
           pollStatus(async (statusData) => {
-              const options = statusData.title_options ? Object.keys(statusData.title_options).sort() : ['title_0.png'];
+              const keys = statusData.title_options ? Object.keys(statusData.title_options).sort() : [];
+              const options = keys.length > 0 ? keys : ['title_0.png'];
               setTitleOptions(options);
               setTitleImage(options[0]);
+              setPreviewTimestamp(Date.now()); // Force refresh images
               setLoading(false);
           }, 'title_generation');
       } catch (err) {
@@ -609,16 +705,40 @@ Generate a high-quality infographic that looks like it was created with the same
   };
 
   const generatePictogram = async (titleText, currentTitleImage = null) => {
+      setLoading(true);
       setLoadingText('Generating pictogram...');
       try {
           // If titleText is not provided (e.g. manual regeneration), try to get it or use default
           const text = titleText || 'InfoGraphic'; 
           await axios.get(`/api/start_pictogram_generation/${encodeURIComponent(text)}`);
           pollStatus((statusData) => {
-              const options = statusData.pictogram_options ? Object.keys(statusData.pictogram_options).sort() : ['pictogram_0.png'];
+              console.log('Pictogram generation finished', statusData);
+              
+              // Ensure we get the options
+              let options = [];
+              if (statusData.pictogram_options) {
+                  options = Object.keys(statusData.pictogram_options).sort();
+              }
+              
+              // Fallback if empty (should not happen if backend works)
+              if (options.length === 0) {
+                  console.warn('No pictogram options found in statusData');
+                  // Try to infer from standard naming if backend failed to populate dict but files exist?
+                  options = ['pictogram_0.png', 'pictogram_1.png', 'pictogram_2.png'];
+              }
+
               setPictogramOptions(options);
+              
+              // Select the first one
               const newPictograms = [options[0]];
+              
+              // Update states together to trigger single canvas update
+              if (currentTitleImage) {
+                  setTitleImage(currentTitleImage);
+              }
               setSelectedPictograms(newPictograms);
+              
+              setPreviewTimestamp(Date.now()); // Force refresh images
               setLoading(false);
               
               // Force update canvas with new assets
@@ -633,7 +753,7 @@ Generate a high-quality infographic that looks like it was created with the same
                   // Actually, React state updates trigger re-renders and then useEffects.
                   // So the existing useEffect should handle it.
               }
-          }, 'pictogram_generation');
+          }, 'pictogram_generation', true);
       } catch (err) {
           console.error(err);
           setLoading(false);
@@ -647,9 +767,23 @@ Generate a high-quality infographic that looks like it was created with the same
           const text = 'InfoGraphic'; 
           await axios.get(`/api/regenerate_pictogram/${encodeURIComponent(text)}`);
           pollStatus((statusData) => {
-              const options = statusData.pictogram_options ? Object.keys(statusData.pictogram_options).sort() : ['pictogram_0.png'];
+              console.log('Pictogram regeneration finished', statusData);
+              
+              // Ensure we get the options
+              let options = [];
+              if (statusData.pictogram_options) {
+                  options = Object.keys(statusData.pictogram_options).sort();
+              }
+              
+              // Fallback if empty
+              if (options.length === 0) {
+                  console.warn('No pictogram options found in statusData');
+                  options = ['pictogram_0.png', 'pictogram_1.png', 'pictogram_2.png'];
+              }
+
               setPictogramOptions(options);
               setSelectedPictograms([options[0]]);
+              setPreviewTimestamp(Date.now()); // Force refresh images
               setLoading(false);
           }, 'pictogram_generation');
       } catch (err) {
@@ -660,12 +794,65 @@ Generate a high-quality infographic that looks like it was created with the same
 
   // Auto-reload canvas when assets change
   useEffect(() => {
-      if (selectedVariation && (titleImage || selectedPictograms.length > 0)) {
+      console.log('useEffect triggered:', { selectedVariation, titleImage, selectedPictograms, canvas: !!canvas });
+      if (canvas && selectedVariation && (titleImage || selectedPictograms.length > 0)) {
           // Use direct URL for chart to avoid re-generation, and overlay assets in frontend
-          // Pass true to indicate we should preserve positions
-          loadChartToCanvas(selectedVariation, `/currentfilepath/variation_${selectedVariation}.png`, true);
+          // First load after reference selection should NOT preserve positions (use layout instead)
+          // Subsequent changes should preserve positions
+          const shouldPreservePositions = canvas.getObjects().length > 1;
+          loadChartToCanvas(selectedVariation, `/currentfilepath/variation_${selectedVariation}.png`, shouldPreservePositions);
       }
-  }, [titleImage, selectedPictograms]);
+  }, [canvas, titleImage, selectedPictograms, selectedVariation]);
+
+  // Auto-load refinement history when both title and pictogram are available
+  useEffect(() => {
+      const loadRefinementHistory = async () => {
+          // Only load history if we have all required materials
+          if (!titleImage || !selectedPictograms || selectedPictograms.length === 0 || !selectedVariation) {
+              return;
+          }
+
+          console.log('Loading refinement history for materials:', {
+              titleImage,
+              pictogram: selectedPictograms[0],
+              chart_type: selectedVariation
+          });
+
+          try {
+              const response = await axios.post('/api/material_history', {
+                  title: titleImage,
+                  pictogram: selectedPictograms[0],
+                  chart_type: selectedVariation
+              });
+
+              if (response.data.found && response.data.versions && response.data.versions.length > 0) {
+                  console.log(`Found ${response.data.total_versions} historical versions`);
+
+                  // Convert versions to refinedImages format
+                  const historyImages = response.data.versions.map(version => ({
+                      url: `/${version.url}?t=${Date.now()}`,
+                      timestamp: new Date(version.timestamp).getTime(),
+                      version: version.version,
+                      fromHistory: true
+                  }));
+
+                  // Set the refined images with history
+                  setRefinedImages(historyImages);
+
+                  console.log('Loaded refinement history:', historyImages.length, 'images');
+              } else {
+                  console.log('No refinement history found for these materials');
+                  // Clear refined images if no history
+                  setRefinedImages([]);
+              }
+          } catch (error) {
+              console.error('Failed to load refinement history:', error);
+              // Don't clear images on error, keep existing state
+          }
+      };
+
+      loadRefinementHistory();
+  }, [titleImage, selectedPictograms, selectedVariation]);
 
   // Note: Initial canvas state is saved in loadChartToCanvas function
   // This useEffect is kept as a backup but may not be needed
@@ -741,13 +928,27 @@ Generate a high-quality infographic that looks like it was created with the same
               currentPositions = savedPositions;
           }
           
-          let imageUrl = '';
-          let bgColor = '#ffffff';
-          let layout = null;
+      let imageUrl = '';
+      let layout = null;
 
           if (directUrl) {
               // Load directly from the generated file (PNG)
               imageUrl = directUrl;
+
+              // 即使使用 directUrl，也需要获取 layout 信息用于定位
+              try {
+                  const statusRes = await axios.get('/api/status');
+                  const selectedReference = statusRes.data.selected_reference;
+                  console.log('Fetched status, selected_reference:', selectedReference);
+                  if (selectedReference) {
+                      // 从后端获取 layout 信息
+                      const layoutRes = await axios.get('/api/layout');
+              layout = layoutRes.data.layout;
+              console.log('Fetched layout:', layout);
+                  }
+              } catch (err) {
+                  console.warn('Failed to fetch layout info:', err);
+              }
           } else {
               // Call backend to generate/composite
               const dataName = selectedFile.replace('.csv', '');
@@ -764,22 +965,19 @@ Generate a high-quality infographic that looks like it was created with the same
               });
               // Use PNG url from backend
               imageUrl = res.data.png_url;
-              bgColor = res.data.bg_color;
               layout = res.data.layout;
           }
           
           canvas.clear();
-          // Use background color from response or keep current canvas background
-          let canvasBgColor = bgColor || canvas.backgroundColor || '#ffffff';
-          if (canvasBgColor) {
-            canvas.setBackgroundColor(canvasBgColor, canvas.renderAll.bind(canvas));
-            setBgColor(canvasBgColor);
-            
-            // Also apply to canvas wrapper
-            const canvasWrapper = document.querySelector('.canvas-wrapper');
-            if (canvasWrapper) {
-                canvasWrapper.style.backgroundColor = canvasBgColor;
-            }
+          // Keep user-selected/background color (default white) instead of backend color
+          const canvasBgColor = bgColor || canvas.backgroundColor || '#ffffff';
+          canvas.setBackgroundColor(canvasBgColor, canvas.renderAll.bind(canvas));
+          setBgColor(canvasBgColor);
+          
+          // Also apply to canvas wrapper
+          const canvasWrapper = document.querySelector('.canvas-wrapper');
+          if (canvasWrapper) {
+              canvasWrapper.style.backgroundColor = canvasBgColor;
           }
 
           const addImage = (url, options) => {
@@ -823,19 +1021,144 @@ Generate a high-quality infographic that looks like it was created with the same
                   maxWidth: canvas.width * 0.9,
                   maxHeight: canvas.height * 0.7
               };
-          } else if (layout && layout.chart) {
-              // Use layout from backend (from reference)
-              console.log('Using reference layout:', layout);
-              chartOptions = {
-                  left: layout.chart.x * canvas.width,
-                  top: layout.chart.y * canvas.height,
-                  maxWidth: layout.chart.width * canvas.width,
-                  maxHeight: layout.chart.height * canvas.height,
+
+              // Title saved positions
+              if (currentPositions.title) {
+                  titleOptions = currentPositions.title;
+              } else {
+                  titleOptions = {
+                      maxWidth: 400,
+                      maxHeight: 150,
+                      left: 20,
+                      top: 20,
+                      originX: 'left',
+                      originY: 'top'
+                  };
+              }
+
+              // Pictogram saved positions handled later
+              imageOptions = {
+                  maxWidth: 200,
+                  maxHeight: 200,
+                  left: canvas.width - 220,
+                  top: canvas.height - 220,
                   originX: 'left',
                   originY: 'top'
               };
+          } else if (layout && layout.width && layout.height) {
+              // 使用参考图布局：将 layout 按比例缩放到画布中并居中
+              console.log('Using reference layout:', layout);
+
+              // 计算缩放比例，使 layout 能够放入画布中（留一些边距）
+              const padding = 40; // 画布边距
+              const layoutScale = Math.min(
+                  (canvas.width - padding * 2) / layout.width,
+                  (canvas.height - padding * 2) / layout.height
+              );
+
+              // 缩放后的 layout 尺寸
+              const scaledLayoutWidth = layout.width * layoutScale;
+              const scaledLayoutHeight = layout.height * layoutScale;
+
+              // 计算居中偏移量
+              const offsetX = (canvas.width - scaledLayoutWidth) / 2;
+              const offsetY = (canvas.height - scaledLayoutHeight) / 2;
+
+              console.log('Layout scale:', layoutScale, 'offsetX:', offsetX, 'offsetY:', offsetY);
+
+              // 辅助函数：计算元素在缩放后的 layout 中的位置和尺寸
+              const calculateBoxOptions = (box) => {
+                  if (!box) return null;
+
+                  // 框在缩放后 layout 中的位置和尺寸（box的坐标是相对比例）
+                  const boxX = offsetX + box.x * scaledLayoutWidth;
+                  const boxY = offsetY + box.y * scaledLayoutHeight;
+                  const boxWidth = box.width * scaledLayoutWidth;
+                  const boxHeight = box.height * scaledLayoutHeight;
+
+                  console.log('Box calculated:', { boxX, boxY, boxWidth, boxHeight });
+
+                  return {
+                      // 框的中心位置（用于居中放置元素）
+                      centerX: boxX + boxWidth / 2,
+                      centerY: boxY + boxHeight / 2,
+                      maxWidth: boxWidth,
+                      maxHeight: boxHeight,
+                      originX: 'center',
+                      originY: 'center'
+                  };
+              };
+
+              // Chart options
+              if (layout.chart) {
+                  const chartBox = calculateBoxOptions(layout.chart);
+                  chartOptions = {
+                      left: chartBox.centerX,
+                      top: chartBox.centerY,
+                      maxWidth: chartBox.maxWidth,
+                      maxHeight: chartBox.maxHeight,
+                      originX: 'center',
+                      originY: 'center'
+                  };
+                  console.log('Chart options:', chartOptions);
+              } else {
+                  chartOptions = {
+                      maxWidth: canvas.width * 0.9,
+                      maxHeight: canvas.height * 0.7,
+                      left: canvas.width / 2,
+                      top: canvas.height / 2,
+                      originX: 'center',
+                      originY: 'center'
+                  };
+              }
+
+              // Title options
+              if (layout.title) {
+                  const titleBox = calculateBoxOptions(layout.title);
+                  titleOptions = {
+                      left: titleBox.centerX,
+                      top: titleBox.centerY,
+                      maxWidth: titleBox.maxWidth,
+                      maxHeight: titleBox.maxHeight,
+                      originX: 'center',
+                      originY: 'center'
+                  };
+                  console.log('Title options:', titleOptions);
+              } else {
+                  titleOptions = {
+                      maxWidth: 400,
+                      maxHeight: 150,
+                      left: canvas.width / 2,
+                      top: 80,
+                      originX: 'center',
+                      originY: 'center'
+                  };
+              }
+
+              // Image/Pictogram options
+              if (layout.image) {
+                  const imageBox = calculateBoxOptions(layout.image);
+                  imageOptions = {
+                      left: imageBox.centerX,
+                      top: imageBox.centerY,
+                      maxWidth: imageBox.maxWidth,
+                      maxHeight: imageBox.maxHeight,
+                      originX: 'center',
+                      originY: 'center'
+                  };
+                  console.log('Pictogram options:', imageOptions);
+              } else {
+                  imageOptions = {
+                      maxWidth: 200,
+                      maxHeight: 200,
+                      left: canvas.width - 120,
+                      top: canvas.height - 120,
+                      originX: 'center',
+                      originY: 'center'
+                  };
+              }
           } else {
-              // Default layout
+              // Default layout (no reference)
               chartOptions = {
                   maxWidth: canvas.width * 0.9,
                   maxHeight: canvas.height * 0.7,
@@ -844,21 +1167,7 @@ Generate a high-quality infographic that looks like it was created with the same
                   originX: 'left',
                   originY: 'top'
               };
-          }
 
-          // Title options
-          if (preservePositions && currentPositions.title) {
-              titleOptions = currentPositions.title;
-          } else if (layout && layout.title) {
-              titleOptions = {
-                  left: layout.title.x * canvas.width,
-                  top: layout.title.y * canvas.height,
-                  maxWidth: layout.title.width * canvas.width,
-                  maxHeight: layout.title.height * canvas.height,
-                  originX: 'left',
-                  originY: 'top'
-              };
-          } else {
               titleOptions = {
                   maxWidth: 400,
                   maxHeight: 150,
@@ -867,19 +1176,7 @@ Generate a high-quality infographic that looks like it was created with the same
                   originX: 'left',
                   originY: 'top'
               };
-          }
 
-          // Image/Pictogram options
-          if (layout && layout.image) {
-              imageOptions = {
-                  left: layout.image.x * canvas.width,
-                  top: layout.image.y * canvas.height,
-                  maxWidth: layout.image.width * canvas.width,
-                  maxHeight: layout.image.height * canvas.height,
-                  originX: 'left',
-                  originY: 'top'
-              };
-          } else {
               imageOptions = {
                   maxWidth: 200,
                   maxHeight: 200,
@@ -932,6 +1229,7 @@ Generate a high-quality infographic that looks like it was created with the same
           setTimeout(() => {
             if (canvas && canvas.getObjects().length > 0) {
               const json = JSON.stringify(canvas.toJSON());
+              clearSnapshots();
               setHistory([json]);
               setHistoryIndex(0);
               historyRef.current.history = [json];
@@ -961,16 +1259,10 @@ Generate a high-quality infographic that looks like it was created with the same
   };
 
   const handleRedo = () => {
-    if (!canvas || historyRef.current.historyIndex >= historyRef.current.history.length - 1) return;
-    const newIndex = historyRef.current.historyIndex + 1;
-    const stateJson = historyRef.current.history[newIndex];
-    if (stateJson) {
-      canvas.loadFromJSON(stateJson, () => {
-        canvas.renderAll();
-        historyRef.current.historyIndex = newIndex;
-        setHistoryIndex(newIndex);
-      });
-    }
+    if (!canvas) return;
+    const stateJson = popSnapshot();
+    if (!stateJson) return;
+    loadStateFromJson(stateJson);
   };
 
   const handleDelete = () => {
@@ -979,6 +1271,7 @@ Generate a high-quality infographic that looks like it was created with the same
     if (activeObject) {
       // Save state before deletion
       const json = JSON.stringify(canvas.toJSON());
+      pushSnapshot(json);
       setHistory(prev => {
         const currentIndex = historyRef.current.historyIndex;
         const newHistory = prev.slice(0, currentIndex + 1);
@@ -1006,6 +1299,59 @@ Generate a high-quality infographic that looks like it was created with the same
     }
   };
 
+  const handleDownloadCanvas = () => {
+    if (!canvas) return;
+    const objects = canvas.getObjects().filter(obj => obj.visible);
+    if (!objects.length) {
+      alert('画布中没有可导出的元素');
+      return;
+    }
+
+    const padding = 8;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    objects.forEach(obj => {
+      const rect = obj.getBoundingRect(true, true);
+      minX = Math.min(minX, rect.left);
+      minY = Math.min(minY, rect.top);
+      maxX = Math.max(maxX, rect.left + rect.width);
+      maxY = Math.max(maxY, rect.top + rect.height);
+    });
+
+    if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
+      alert('无法计算画布范围，请重试');
+      return;
+    }
+
+    const left = Math.max(Math.floor(minX - padding), 0);
+    const top = Math.max(Math.floor(minY - padding), 0);
+    const right = Math.min(Math.ceil(maxX + padding), canvas.getWidth());
+    const bottom = Math.min(Math.ceil(maxY + padding), canvas.getHeight());
+    const width = Math.max(right - left, 1);
+    const height = Math.max(bottom - top, 1);
+
+    const dataUrl = canvas.toDataURL({
+      format: 'png',
+      quality: 1,
+      multiplier: 2,
+      left,
+      top,
+      width,
+      height,
+      enableRetinaScaling: true
+    });
+
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = `workbench_canvas_${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // --- Background Color Management ---
   const handleBgColorChange = (color) => {
       if (!canvas) return;
@@ -1025,11 +1371,11 @@ Generate a high-quality infographic that looks like it was created with the same
           alert('Canvas not initialized');
           return;
       }
-      
+
       setIsRefining(true);
       setLoading(true);
       setLoadingText('正在使用 AI 精修信息图表...');
-      
+
       try {
           // Export full canvas to PNG base64 (2x resolution)
           const pngDataURL = canvas.toDataURL({
@@ -1037,23 +1383,28 @@ Generate a high-quality infographic that looks like it was created with the same
               quality: 1,
               multiplier: 2
           });
-          
+
           // Get background color for backend processing
           const backgroundColor = canvas.backgroundColor || '#ffffff';
-          
+
           // Send to backend for refinement with auto-cropping
+          // Include material information for caching
           const response = await axios.post('/api/export_final', {
               png_base64: pngDataURL,
-              background_color: backgroundColor
+              background_color: backgroundColor,
+              title: titleImage,
+              pictogram: selectedPictograms.length > 0 ? selectedPictograms[0] : '',
+              chart_type: selectedVariation,
+              force_regenerate: true  // Always generate new version for AI refine button
           });
-          
+
           if (response.data.status === 'started') {
               // Poll for completion
               await pollRefinementStatus();
           } else {
               throw new Error(response.data.error || '生成失败');
           }
-          
+
       } catch (error) {
           console.error('Refine failed:', error);
           alert('精修失败: ' + error.message);
@@ -1066,40 +1417,65 @@ Generate a high-quality infographic that looks like it was created with the same
   const pollRefinementStatus = async () => {
       const maxAttempts = 120; // Max 2 minutes
       let attempts = 0;
-      
+
       while (attempts < maxAttempts) {
           try {
               const response = await axios.get('/api/status');
               const status = response.data;
-              
+
               // Update loading text with progress
               if (status.progress) {
                   setLoadingText(status.progress);
               }
-              
+
               if (status.step === 'final_export' && status.completed) {
                   if (status.status === 'completed') {
-                      // Success! Add refined image to the list
-                      const refinedUrl = `/api/download_final?t=${Date.now()}`;
-                      setRefinedImages(prev => [...prev, {
-                          url: refinedUrl,
-                          timestamp: Date.now()
-                      }]);
-                      // Keep edit panel open to show the result
+                      // Success! Reload the refinement history to get the new version
+                      console.log('Refinement completed, reloading history...');
+
+                      // Reload history after successful refinement
+                      try {
+                          const historyResponse = await axios.post('/api/material_history', {
+                              title: titleImage,
+                              pictogram: selectedPictograms.length > 0 ? selectedPictograms[0] : '',
+                              chart_type: selectedVariation
+                          });
+
+                          if (historyResponse.data.found && historyResponse.data.versions && historyResponse.data.versions.length > 0) {
+                              const historyImages = historyResponse.data.versions.map(version => ({
+                                  url: `/${version.url}?t=${Date.now()}`,
+                                  timestamp: new Date(version.timestamp).getTime(),
+                                  version: version.version,
+                                  fromHistory: true
+                              }));
+
+                              setRefinedImages(historyImages);
+                              console.log('Reloaded history:', historyImages.length, 'images');
+                          }
+                      } catch (historyError) {
+                          console.error('Failed to reload history:', historyError);
+                          // Fallback: add just the new image
+                          const refinedUrl = `/api/download_final?t=${Date.now()}`;
+                          setRefinedImages(prev => [...prev, {
+                              url: refinedUrl,
+                              timestamp: Date.now()
+                          }]);
+                      }
+
                       return;
                   } else if (status.status === 'error') {
                       throw new Error(status.progress || '精修失败');
                   }
               }
-              
+
           } catch (error) {
               console.error('Status check failed:', error);
           }
-          
+
           await new Promise(resolve => setTimeout(resolve, 1000));
           attempts++;
       }
-      
+
       throw new Error('精修超时，请重试');
   };
   
@@ -1128,249 +1504,400 @@ Generate a high-quality infographic that looks like it was created with the same
   // --- Render ---
   return (
     <div className="workbench-container">
-      {/* Left Sidebar: Configuration */}
+      {/* Left Sidebar: Configuration / Edit */}
       <div className="sidebar">
-        <div className="sidebar-header">图表配置</div>
-        
-        {/* Dataset Section */}
-        <div className="config-section">
-          <div className="section-title">数据集选择</div>
-          <div className="dataset-control">
-            <select value={selectedFile} onChange={handleFileSelect} className="dataset-select">
-              <option value="">选择数据集...</option>
-              {csvFiles.map(f => (
-                <option key={f} value={f}>{f.replace('.csv', '')}</option>
-              ))}
-            </select>
-            <button className="upload-btn" title="Upload (Not Supported)" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }}>↑</button>
+        <div className="sidebar-header">
+          {/* <span>{sidebarView === 'config' ? '图表配置' : '编辑面板'}</span> */}
+          <div className="sidebar-view-toggle">
+            <button
+              className={sidebarView === 'config' ? 'active' : ''}
+              onClick={() => setSidebarView('config')}
+            >
+              图表配置
+            </button>
+            <button
+              className={sidebarView === 'edit' ? 'active' : ''}
+              onClick={() => setSidebarView('edit')}
+            >
+              编辑面板
+            </button>
           </div>
         </div>
 
-        {/* Types Section */}
-        {selectedFile && (
-        <div className="config-section">
-          <div className="section-title">推荐图表类型</div>
-          <div className="grid-container">
-            {getPagedData(chartTypes, chartTypePage, CHART_TYPES_PER_PAGE).map(type => (
-               <div 
-                 key={type.type} 
-                 className={`grid-item ${selectedChartType === type.type ? 'selected' : ''}`}
-                 onClick={() => handleChartTypeSelect(type.type)}
-               >
-                 <img 
-                    src={type.image_url || `/static/chart_types/${type.type}.png`}
-                    alt={type.type}
-                    onError={(e) => {
-                        e.target.onerror = null; 
-                        e.target.style.display = 'none';
-                        e.target.parentNode.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:10px;">${type.type}</div>`;
-                    }}
-                 />
-               </div>
-            ))}
-          </div>
-          {/* Pagination */}
-          <div className="pagination">
-             <button disabled={chartTypePage === 0} onClick={() => setChartTypePage(p => p - 1)}>&lt;</button>
-             <span>{chartTypePage + 1} / {Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) || 1}</span>
-             <button disabled={chartTypePage >= Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) - 1} onClick={handleChartTypeNext}>&gt;</button>
-          </div>
-        </div>
-        )}
-
-        {/* Variation Section */}
-        {selectedChartType && (
-        <div className="config-section">
-          <div className="section-title">推荐图表变体</div>
-          <div className="grid-container">
-            {getPagedData(variations, variationPage, VARIATIONS_PER_PAGE).map(v => (
-               <div 
-                 key={v.name} 
-                 className={`grid-item ${selectedVariation === v.name ? 'selected' : ''}`}
-                 onClick={() => handleVariationSelect(v.name)}
-               >
-                 <img 
-                    src={`/currentfilepath/variation_${v.name}.png?t=${previewTimestamp}`}
-                    alt={v.name}
-                    onError={(e) => {
-                        e.target.onerror = null; 
-                        e.target.style.display = 'none';
-                        e.target.parentNode.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:10px;">${v.name}</div>`;
-                    }}
-                 />
-               </div>
-            ))}
-          </div>
-          {/* Pagination */}
-          <div className="pagination">
-             <button disabled={variationPage === 0} onClick={() => setVariationPage(p => p - 1)}>&lt;</button>
-             <span>{variationPage + 1} / {Math.ceil(totalVariations / VARIATIONS_PER_PAGE) || 1}</span>
-             <button disabled={variationPage >= Math.ceil(totalVariations / VARIATIONS_PER_PAGE) - 1} onClick={handleVariationNext}>&gt;</button>
-          </div>
-        </div>
-        )}
-
-        {/* Reference Section */}
-        {selectedVariation && references.length > 0 && (
-        <div className="config-section">
-          <div className="section-title">推荐参考图片</div>
-          <div className="grid-container">
-            {getPagedData(references, referencePage, REFERENCES_PER_PAGE).map(ref => (
-               <div 
-                 key={ref} 
-                 className={`grid-item ${selectedReference === ref ? 'selected' : ''}`}
-                 onClick={() => handleReferenceSelect(ref)}
-               >
-                 <img 
-                    src={`/infographics/${ref}`} 
-                    alt={ref}
-                    onError={(e) => {
-                        e.target.onerror = null;
-                        // Try static path if infographics fails
-                        e.target.src = `/static/images/references/${ref}`; 
-                    }}
-                 />
-               </div>
-            ))}
-          </div>
-          {/* Pagination */}
-          <div className="pagination">
-             <button disabled={referencePage === 0} onClick={() => setReferencePage(p => p - 1)}>&lt;</button>
-             <span>{referencePage + 1} / {Math.ceil(totalReferences / REFERENCES_PER_PAGE) || 1}</span>
-             <button disabled={referencePage >= Math.ceil(totalReferences / REFERENCES_PER_PAGE) - 1} onClick={handleReferenceNext}>&gt;</button>
-          </div>
-
-          {selectedReference && (
-              <div className="selected-reference-card" style={{marginTop: '15px', border: '1px solid #e0e0e0', padding: '10px', borderRadius: '6px', position: 'relative', backgroundColor: '#fff'}}>
-                  <div style={{fontSize: '1rem', marginBottom: '8px', fontWeight: '600', color: '#333'}}>当前参考图片</div>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); setSelectedReference(''); }}
-                    style={{position: 'absolute', top: '5px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#666', padding: 0, lineHeight: 1}}
-                    title="Remove selection"
-                  >×</button>
-                  <img 
-                    src={`/infographics/${selectedReference}`} 
-                    alt="Selected" 
-                    style={{width: '50%', height: 'auto', objectFit: 'contain', borderRadius: '4px', border: '1px solid #eee', display: 'block', margin: '0 auto'}}
-                    onError={(e) => { e.target.src = `/static/images/references/${selectedReference}`; }}
-                  />
+        <div className="sidebar-scroll">
+        {sidebarView === 'config' ? (
+          <>
+            <div className="config-section">
+              <div className="section-title">数据集选择</div>
+              <div className="dataset-control">
+                <select value={selectedFile} onChange={handleFileSelect} className="dataset-select">
+                  <option value="">选择数据集...</option>
+                  {csvFiles
+                    .filter(f => f === 'Space.csv' || f === 'Commute.csv')
+                    .map(f => (
+                      <option key={f} value={f}>{f.replace('.csv', '')}</option>
+                    ))}
+                </select>
+                <button
+                  className="upload-btn"
+                  title="预览数据"
+                  onClick={handleDataPreview}
+                  disabled={!selectedFile}
+                  style={{
+                    opacity: selectedFile ? 1 : 0.5,
+                    cursor: selectedFile ? 'pointer' : 'not-allowed',
+                    background: selectedFile ? '#4CAF50' : '#ccc'
+                  }}
+                >
+                  👁️
+                </button>
               </div>
-          )}
-        </div>
-        )}
+            </div>
 
-        {/* Assets Section */}
-        {selectedVariation && (titleImage || selectedPictograms.length > 0) && (
-        <div className="config-section">
-            <div className="section-title">元素生成结果</div>
-            
-            {/* Title Selection */}
-            {titleOptions.length > 0 ? (
-                <div className="asset-group" style={{marginBottom: '15px'}}>
-                    <div className="asset-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                        <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>标题</label>
-                        <button onClick={regenerateTitle} style={{fontSize: '0.875rem', padding: '2px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer'}}>重新生成</button>
+            {selectedFile && (
+              <div className="config-section">
+                <div className="section-title">推荐图表类型</div>
+                <div className="grid-container">
+                  {getPagedData(chartTypes, chartTypePage, CHART_TYPES_PER_PAGE).map(type => (
+                    <div 
+                      key={type.type} 
+                      className={`grid-item ${selectedChartType === type.type ? 'selected' : ''}`}
+                      onClick={() => handleChartTypeSelect(type.type)}
+                    >
+                      <img 
+                        src={type.image_url || `/static/chart_types/${type.type}.png`}
+                        alt={type.type}
+                        onError={(e) => {
+                          e.target.onerror = null; 
+                          e.target.style.display = 'none';
+                          e.target.parentNode.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:10px;">${type.type}</div>`;
+                        }}
+                      />
                     </div>
-                    <div className="asset-options-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px'}}>
-                        {titleOptions.map(opt => (
-                            <div 
-                                key={opt} 
-                                className={`asset-option ${titleImage === opt ? 'selected' : ''}`}
-                                onClick={() => setTitleImage(opt)}
-                                style={{
-                                    border: titleImage === opt ? '2px solid #007bff' : '1px solid #eee',
-                                    borderRadius: '4px',
-                                    overflow: 'hidden',
-                                    cursor: 'pointer',
-                                    aspectRatio: '1 / 1',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backgroundColor: '#fff'
-                                }}
-                            >
-                                <img 
-                                    src={`/currentfilepath/${opt}?t=${previewTimestamp}`} 
-                                    alt="Title Option" 
-                                    style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain'}}
-                                />
-                            </div>
-                        ))}
-                    </div>
+                  ))}
                 </div>
-            ) : (
-                /* Fallback for legacy state or single image */
-                titleImage && (
-                    <div className="asset-item">
-                        <div>
-                            <label>Title</label>
-                            <button onClick={regenerateTitle}>重新生成</button>
-                        </div>
-                        <img src={`/currentfilepath/${titleImage}?t=${Date.now()}`} alt="Title" />
-                    </div>
-                )
+                <div className="pagination">
+                  <button disabled={chartTypePage === 0} onClick={() => setChartTypePage(p => p - 1)}>&lt;</button>
+                  <span>{chartTypePage + 1} / {Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) || 1}</span>
+                  <button disabled={chartTypePage >= Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) - 1} onClick={handleChartTypeNext}>&gt;</button>
+                </div>
+              </div>
             )}
 
-            {/* Pictogram Selection */}
-            {pictogramOptions.length > 0 ? (
-                <div className="asset-group">
+            {selectedChartType && (
+              <div className="config-section">
+                <div className="section-title">推荐图表变体</div>
+                <div className="grid-container">
+                  {getPagedData(variations, variationPage, VARIATIONS_PER_PAGE).map(v => (
+                    <div 
+                      key={v.name} 
+                      className={`grid-item ${selectedVariation === v.name ? 'selected' : ''}`}
+                      onClick={() => handleVariationSelect(v.name)}
+                    >
+                      <img 
+                        src={`/currentfilepath/variation_${v.name}.png?t=${previewTimestamp}`}
+                        alt={v.name}
+                        onError={(e) => {
+                          e.target.onerror = null; 
+                          e.target.style.display = 'none';
+                          e.target.parentNode.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:10px;">${v.name}</div>`;
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="pagination">
+                  <button disabled={variationPage === 0} onClick={() => setVariationPage(p => p - 1)}>&lt;</button>
+                  <span>{variationPage + 1} / {Math.ceil(totalVariations / VARIATIONS_PER_PAGE) || 1}</span>
+                  <button disabled={variationPage >= Math.ceil(totalVariations / VARIATIONS_PER_PAGE) - 1} onClick={handleVariationNext}>&gt;</button>
+                </div>
+              </div>
+            )}
+
+            {selectedVariation && references.length > 0 && (
+              <div className="config-section">
+                <div className="section-title">推荐参考图片</div>
+                <div className="grid-container">
+                  {getPagedData(references, referencePage, REFERENCES_PER_PAGE).map(ref => (
+                    <div 
+                      key={ref} 
+                      className={`grid-item ${selectedReference === ref ? 'selected' : ''}`}
+                      onClick={() => handleReferenceSelect(ref)}
+                    >
+                      <img 
+                        src={`/infographics/${ref}`}
+                        alt={ref}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = `/static/images/references/${ref}`; 
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="pagination">
+                  <button disabled={referencePage === 0} onClick={() => setReferencePage(p => p - 1)}>&lt;</button>
+                  <span>{referencePage + 1} / {Math.ceil(totalReferences / REFERENCES_PER_PAGE) || 1}</span>
+                  <button disabled={referencePage >= Math.ceil(totalReferences / REFERENCES_PER_PAGE) - 1} onClick={handleReferenceNext}>&gt;</button>
+                </div>
+
+                {selectedReference && (
+                  <div className="selected-reference-card" style={{marginTop: '15px', border: '1px solid #e0e0e0', padding: '10px', borderRadius: '6px', position: 'relative', backgroundColor: '#fff'}}>
+                    <div style={{fontSize: '1rem', marginBottom: '8px', fontWeight: '600', color: '#333'}}>当前参考图片</div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setSelectedReference(''); }}
+                      style={{position: 'absolute', top: '5px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#666', padding: 0, lineHeight: 1}}
+                      title="Remove selection"
+                    >×</button>
+                    <img 
+                      src={`/infographics/${selectedReference}`}
+                      alt="Selected" 
+                      style={{width: '50%', height: 'auto', objectFit: 'contain', borderRadius: '4px', border: '1px solid #eee', display: 'block', margin: '0 auto'}}
+                      onError={(e) => { e.target.src = `/static/images/references/${selectedReference}`; }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectedVariation && (titleImage || selectedPictograms.length > 0) && (
+              <div className="config-section">
+                <div className="section-title">元素生成结果</div>
+
+                {titleOptions.length > 0 ? (
+                  <div className="asset-group" style={{marginBottom: '15px'}}>
                     <div className="asset-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                        <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>图像（可多选）</label>
-                        <button onClick={regeneratePictogram} style={{fontSize: '0.875rem', padding: '2px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer'}}>重新生成</button>
+                      <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>标题</label>
+                      <button onClick={regenerateTitle} style={{fontSize: '0.875rem', padding: '2px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer'}}>重新生成</button>
                     </div>
                     <div className="asset-options-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px'}}>
-                        {pictogramOptions.map(opt => (
-                            <div 
-                                key={opt} 
-                                className={`asset-option ${selectedPictograms.includes(opt) ? 'selected' : ''}`}
-                                onClick={() => {
-                                    setSelectedPictograms(prev => {
-                                        if (prev.includes(opt)) {
-                                            return prev.filter(p => p !== opt);
-                                        } else {
-                                            return [...prev, opt];
-                                        }
-                                    });
-                                }}
-                                style={{
-                                    border: selectedPictograms.includes(opt) ? '2px solid #007bff' : '1px solid #eee',
-                                    borderRadius: '4px',
-                                    overflow: 'hidden',
-                                    cursor: 'pointer',
-                                    aspectRatio: '1 / 1',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backgroundColor: '#fff',
-                                    position: 'relative'
-                                }}
-                            >
-                                {selectedPictograms.includes(opt) && (
-                                    <div style={{position: 'absolute', top: '2px', right: '2px', width: '16px', height: '16px', background: '#007bff', borderRadius: '50%', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>✓</div>
-                                )}
-                                <img 
-                                    src={`/currentfilepath/${opt}?t=${previewTimestamp}`} 
-                                    alt="Pictogram Option" 
-                                    style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain'}}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                /* Fallback */
-                selectedPictograms.length > 0 && (
-                    <div className="asset-item">
-                        <div>
-                            <label>Pictogram</label>
-                            <button onClick={regeneratePictogram}>重新生成</button>
+                      {titleOptions.map(opt => (
+                        <div 
+                          key={opt} 
+                          className={`asset-option ${titleImage === opt ? 'selected' : ''}`}
+                          onClick={() => setTitleImage(opt)}
+                          style={{
+                            border: titleImage === opt ? '2px solid #007bff' : '1px solid #eee',
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            cursor: 'pointer',
+                            aspectRatio: '1 / 1',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: '#fff'
+                          }}
+                        >
+                          <img 
+                            src={`/currentfilepath/${opt}?t=${previewTimestamp}`}
+                            alt="Title Option" 
+                            style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain'}}
+                          />
                         </div>
-                        <img src={`/currentfilepath/${selectedPictograms[0]}?t=${Date.now()}`} alt="Pictogram" />
+                      ))}
                     </div>
-                )
+                  </div>
+                ) : (
+                  titleImage && (
+                    <div className="asset-item">
+                      <div>
+                        <label>Title</label>
+                        <button onClick={regenerateTitle}>重新生成</button>
+                      </div>
+                      <img src={`/currentfilepath/${titleImage}?t=${Date.now()}`} alt="Title" />
+                    </div>
+                  )
+                )}
+
+                {pictogramOptions.length > 0 ? (
+                  <div className="asset-group">
+                    <div className="asset-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                      <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>图像（可多选）</label>
+                      <button onClick={regeneratePictogram} style={{fontSize: '0.875rem', padding: '2px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer'}}>重新生成</button>
+                    </div>
+                    <div className="asset-options-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px'}}>
+                      {pictogramOptions.map(opt => (
+                        <div 
+                          key={opt} 
+                          className={`asset-option ${selectedPictograms.includes(opt) ? 'selected' : ''}`}
+                          onClick={() => {
+                            setSelectedPictograms(prev => prev.includes(opt) ? prev.filter(p => p !== opt) : [...prev, opt]);
+                          }}
+                          style={{
+                            border: selectedPictograms.includes(opt) ? '2px solid #007bff' : '1px solid #eee',
+                            borderRadius: '4px',
+                            overflow: 'hidden',
+                            cursor: 'pointer',
+                            aspectRatio: '1 / 1',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: '#fff',
+                            position: 'relative'
+                          }}
+                        >
+                          {selectedPictograms.includes(opt) && (
+                            <div style={{position: 'absolute', top: '2px', right: '2px', width: '16px', height: '16px', background: '#007bff', borderRadius: '50%', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>✓</div>
+                          )}
+                          <img 
+                            src={`/currentfilepath/${opt}?t=${previewTimestamp}`}
+                            alt="Pictogram Option" 
+                            style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain'}}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  selectedPictograms.length > 0 && (
+                    <div className="asset-item">
+                      <div>
+                        <label>Pictogram</label>
+                        <button onClick={regeneratePictogram}>重新生成</button>
+                      </div>
+                      <img src={`/currentfilepath/${selectedPictograms[0]}?t=${Date.now()}`} alt="Pictogram" />
+                    </div>
+                  )
+                )}
+              </div>
             )}
-        </div>
+          </>
+        ) : (
+          <>
+            <div className="config-section">
+              <div className="section-title">背景颜色</div>
+              <div className="color-options" style={{marginBottom: '10px'}}>
+                {['#ffffff', '#f5f3ef', '#f0f0f0', '#e8f4f8', '#fff9e6', '#f0fff0', '#fff0f5', '#f5f5dc'].map(c => (
+                  <div 
+                    key={c} 
+                    className="color-swatch" 
+                    style={{
+                      backgroundColor: c,
+                      border: bgColor === c ? '3px solid #667eea' : '1px solid #ddd',
+                      boxShadow: bgColor === c ? '0 0 0 2px rgba(102, 126, 234, 0.2)' : 'none'
+                    }}
+                    onClick={() => handleBgColorChange(c)}
+                    title={c}
+                  />
+                ))}
+              </div>
+              <div style={{display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '16px'}}>
+                <input
+                  type="color"
+                  value={bgColor}
+                  onChange={(e) => handleBgColorChange(e.target.value)}
+                  style={{
+                    width: '35px',
+                    height: '36px',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    padding: '2px'
+                  }}
+                />
+                <input
+                  type="text"
+                  value={bgColor}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (/^#[0-9A-Fa-f]{0,6}$/.test(value)) {
+                      setBgColor(value);
+                      if (value.length === 7) {
+                        handleBgColorChange(value);
+                      }
+                    }
+                  }}
+                  placeholder="#ffffff"
+                  style={{
+                    width: '90px',
+                    padding: '8px 12px',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontFamily: 'monospace'
+                  }}
+                />
+              </div>
+
+              <div className="section-title">精修提示词</div>
+              <textarea 
+                className="prompt-input" 
+                placeholder="Enter prompt for refinement..."
+                value={editConfig.prompt}
+                onChange={(e) => setEditConfig({...editConfig, prompt: e.target.value})}
+              />
+            </div>
+
+            <div className="config-section">
+              <div className="section-title">AI 精修</div>
+              <button 
+                className="refine-btn"
+                onClick={handleRefine}
+                disabled={isRefining}
+                style={{
+                  width: '100%',
+                  padding: '14px 24px',
+                  background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontWeight: '600',
+                  fontSize: '1rem',
+                  cursor: isRefining ? 'not-allowed' : 'pointer',
+                  opacity: isRefining ? 0.6 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 4px 12px rgba(72, 187, 120, 0.3)'
+                }}
+              >
+                <span style={{fontSize: '18px'}}>✨</span>
+                <span>{isRefining ? '正在精修...' : 'AI 精修'}</span>
+              </button>
+            </div>
+
+            <div className="config-section">
+              <div className="section-title">精修历史</div>
+              {refinedImages.length > 0 ? (
+                <div className="refined-gallery-grid">
+                  {refinedImages.map((image, index) => (
+                    <div 
+                      key={image.timestamp}
+                      className="refined-gallery-item"
+                      onClick={() => handleImageClick(image)}
+                      title={`点击查看大图 - ${new Date(image.timestamp).toLocaleTimeString()}`}
+                    >
+                      <img src={image.url} alt={`Refined ${index + 1}`} />
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '4px',
+                        right: '4px',
+                        background: 'rgba(0,0,0,0.7)',
+                        color: 'white',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        fontSize: '10px'
+                      }}>
+                        #{refinedImages.length - index}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="refined-gallery-empty">
+                  <div className="refined-gallery-empty-icon">🎨</div>
+                  <div className="refined-gallery-empty-text">
+                    还没有精修图片<br/>
+                    点击“AI 精修”按钮开始
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
         )}
+        </div>
       </div>
 
       {/* Main Preview Area */}
@@ -1392,21 +1919,21 @@ Generate a high-quality infographic that looks like it was created with the same
         }}>
           <button 
             onClick={handleRedo}
-            disabled={historyIndex >= history.length - 1}
+            disabled={snapshotCount === 0}
             style={{
               padding: '8px 16px',
-              background: historyIndex >= history.length - 1 ? '#e0e0e0' : '#6366f1',
-              color: historyIndex >= history.length - 1 ? '#999' : 'white',
+              background: snapshotCount === 0 ? '#e0e0e0' : '#6366f1',
+              color: snapshotCount === 0 ? '#999' : 'white',
               border: 'none',
               borderRadius: '6px',
-              cursor: historyIndex >= history.length - 1 ? 'not-allowed' : 'pointer',
+              cursor: snapshotCount === 0 ? 'not-allowed' : 'pointer',
               fontSize: '0.875rem',
               fontWeight: '600',
-              opacity: historyIndex >= history.length - 1 ? 0.5 : 1
+              opacity: snapshotCount === 0 ? 0.5 : 1
             }}
-            title="重做 (Ctrl+Y)"
+            title="重做 (最多 3 次)"
           >
-            ↷ 重做
+            🔄 重做
           </button>
           <button 
             onClick={handleDelete}
@@ -1426,170 +1953,26 @@ Generate a high-quality infographic that looks like it was created with the same
           >
             🗑️ 删除
           </button>
+          <button
+            onClick={handleDownloadCanvas}
+            disabled={!canvas}
+            style={{
+              padding: '8px 16px',
+              background: !canvas ? '#e0e0e0' : '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: !canvas ? 'not-allowed' : 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: '600',
+              opacity: !canvas ? 0.5 : 1
+            }}
+            title="裁剪导出当前画布内容"
+          >
+            ⬇️ 下载
+          </button>
         </div>
-        
-        {/* Edit Button */}
-        <button className="edit-fab" onClick={() => setShowEditPanel(!showEditPanel)}>
-            进一步编辑
-        </button>
 
-        {/* Edit Panel (Floating) */}
-        {showEditPanel && (
-            <div className="edit-panel">
-                <div className="edit-panel-header">
-                    <span>✏️ 进一步编辑</span>
-                    <button className="close-btn" onClick={() => { setShowEditPanel(false); }}>×</button>
-                </div>
-                
-                <div className="edit-panel-content">
-                {/* Left Column: Controls */}
-                <div className="edit-controls-column">
-                <div className="edit-controls-row">
-                    <div className="edit-row">
-                        <label>背景颜色</label>
-                        <div className="color-options" style={{marginBottom: '10px'}}>
-                            {/* Common background colors */}
-                            {['#ffffff', '#f5f3ef', '#f0f0f0', '#e8f4f8', '#fff9e6', '#f0fff0', '#fff0f5', '#f5f5dc'].map(c => (
-                                <div 
-                                    key={c} 
-                                    className="color-swatch" 
-                                    style={{
-                                        backgroundColor: c,
-                                        border: bgColor === c ? '3px solid #667eea' : '1px solid #ddd',
-                                        boxShadow: bgColor === c ? '0 0 0 2px rgba(102, 126, 234, 0.2)' : 'none'
-                                    }}
-                                    onClick={() => handleBgColorChange(c)}
-                                    title={c}
-                                />
-                            ))}
-                        </div>
-                        <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
-                            <input 
-                                type="color" 
-                                value={bgColor} 
-                                onChange={(e) => handleBgColorChange(e.target.value)}
-                                style={{
-                                    width: '50px',
-                                    height: '36px',
-                                    border: '1px solid var(--border-color)',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    padding: '2px'
-                                }}
-                            />
-                            <input 
-                                type="text" 
-                                value={bgColor} 
-                                onChange={(e) => {
-                                    const value = e.target.value;
-                                    if (/^#[0-9A-Fa-f]{0,6}$/.test(value)) {
-                                        setBgColor(value);
-                                        if (value.length === 7) {
-                                            handleBgColorChange(value);
-                                        }
-                                    }
-                                }}
-                                placeholder="#ffffff"
-                                style={{
-                                    flex: 1,
-                                    padding: '8px 12px',
-                                    border: '1px solid var(--border-color)',
-                                    borderRadius: '6px',
-                                    fontSize: '14px',
-                                    fontFamily: 'monospace'
-                                }}
-                            />
-                        </div>
-                    </div>
-                    
-                    <div className="edit-row">
-                        <label>精修提示词 (Prompt)</label>
-                        <textarea 
-                            className="prompt-input" 
-                            placeholder="Enter prompt for refinement..."
-                            value={editConfig.prompt}
-                            onChange={(e) => setEditConfig({...editConfig, prompt: e.target.value})}
-                        />
-                    </div>
-                </div>
-                
-                <div className="edit-row">
-                    <button 
-                        className="refine-btn"
-                        onClick={handleRefine}
-                        disabled={isRefining}
-                        style={{
-                            width: '100%',
-                            padding: '14px 24px',
-                            background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '10px',
-                            fontWeight: '600',
-                            fontSize: '1rem',
-                            cursor: isRefining ? 'not-allowed' : 'pointer',
-                            opacity: isRefining ? 0.6 : 1,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '10px',
-                            transition: 'all 0.2s',
-                            boxShadow: '0 4px 12px rgba(72, 187, 120, 0.3)'
-                        }}
-                    >
-                        <span style={{fontSize: '18px'}}>✨</span>
-                        <span>{isRefining ? '正在精修...' : 'AI 精修'}</span>
-                    </button>
-                </div>
-                </div>
-                
-                {/* Right Column: Refined Images Gallery */}
-                <div className="refined-gallery-column">
-                    <div className="refined-gallery-header">
-                        <span className="refined-gallery-title">✨ 精修历史</span>
-                        <span style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>
-                            {refinedImages.length} 张图片
-                        </span>
-                    </div>
-                    
-                    {refinedImages.length > 0 ? (
-                        <div className="refined-gallery-grid">
-                            {refinedImages.map((image, index) => (
-                                <div 
-                                    key={image.timestamp}
-                                    className="refined-gallery-item"
-                                    onClick={() => handleImageClick(image)}
-                                    title={`点击查看大图 - ${new Date(image.timestamp).toLocaleTimeString()}`}
-                                >
-                                    <img src={image.url} alt={`Refined ${index + 1}`} />
-                                    <div style={{
-                                        position: 'absolute',
-                                        bottom: '4px',
-                                        right: '4px',
-                                        background: 'rgba(0,0,0,0.7)',
-                                        color: 'white',
-                                        padding: '2px 6px',
-                                        borderRadius: '4px',
-                                        fontSize: '10px'
-                                    }}>
-                                        #{refinedImages.length - index}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="refined-gallery-empty">
-                            <div className="refined-gallery-empty-icon">🎨</div>
-                            <div className="refined-gallery-empty-text">
-                                还没有精修图片<br/>
-                                点击左侧的"AI 精修"按钮开始
-                            </div>
-                        </div>
-                    )}
-                </div>
-                </div>
-            </div>
-        )}
       </div>
 
       {/* Loading Overlay */}
@@ -1653,6 +2036,84 @@ Generate a high-quality infographic that looks like it was created with the same
                   boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
                 }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Data Preview Modal */}
+      {showDataPreview && previewData && (
+        <div className="refined-preview-modal" onClick={() => setShowDataPreview(false)}>
+          <div className="refined-preview-content" onClick={(e) => e.stopPropagation()} style={{maxWidth: '90%', width: '1000px'}}>
+            <div className="refined-preview-header">
+              <h3 style={{margin: 0, display: 'flex', alignItems: 'center', gap: '10px'}}>
+                <span>📊</span>
+                <span>数据预览 - {selectedFile.replace('.csv', '')}</span>
+              </h3>
+              <button
+                className="close-btn"
+                onClick={() => setShowDataPreview(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666',
+                  padding: 0
+                }}
+              >×</button>
+            </div>
+            <div style={{marginTop: '20px', maxHeight: '70vh', overflowY: 'auto'}}>
+              {previewData.columns && previewData.rows && (
+                <div>
+                  <div style={{marginBottom: '15px', color: '#666', fontSize: '14px'}}>
+                    共 {previewData.total_rows || previewData.rows.length} 行数据，显示前 {previewData.rows.length} 行
+                  </div>
+                  <table style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: '14px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}>
+                    <thead>
+                      <tr style={{background: '#f5f5f5'}}>
+                        {previewData.columns.map((col, idx) => (
+                          <th key={idx} style={{
+                            padding: '12px',
+                            textAlign: 'left',
+                            borderBottom: '2px solid #ddd',
+                            fontWeight: '600',
+                            color: '#333'
+                          }}>
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewData.rows.map((row, rowIdx) => (
+                        <tr key={rowIdx} style={{
+                          background: rowIdx % 2 === 0 ? 'white' : '#fafafa',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#f0f0f0'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = rowIdx % 2 === 0 ? 'white' : '#fafafa'}
+                        >
+                          {row.map((cell, cellIdx) => (
+                            <td key={cellIdx} style={{
+                              padding: '10px 12px',
+                              borderBottom: '1px solid #eee',
+                              color: '#555'
+                            }}>
+                              {cell !== null && cell !== undefined ? String(cell) : '-'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>
