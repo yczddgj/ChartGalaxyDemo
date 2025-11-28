@@ -8,4 +8,4 @@ buffer/
 title_cache.json
 variation.json
 *.swp
-*.pyc
+*.pycchart_modules/title_generation/prompts/generated_output.md
