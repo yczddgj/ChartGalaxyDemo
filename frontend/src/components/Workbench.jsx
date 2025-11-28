@@ -3,7 +3,8 @@ import axios from 'axios';
 import { fabric } from 'fabric';
 import './Workbench.css';
 
-const PAN_RANGE = 800; // Max translation (px) for canvas sliders
+const CANVAS_MIN_WIDTH = 1200;
+const CANVAS_MIN_HEIGHT = 900;
 
 function Workbench() {
   // --- State: Data ---
@@ -32,8 +33,7 @@ function Workbench() {
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const [previewTimestamp, setPreviewTimestamp] = useState(Date.now());
-  const [panX, setPanX] = useState(0);
-  const [panY, setPanY] = useState(0);
+  const [layoutNeedsFreshLoad, setLayoutNeedsFreshLoad] = useState(false);
 
   // --- State: Sidebar / Edit Panel ---
   const [sidebarView, setSidebarView] = useState('config');
@@ -101,27 +101,12 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
   const snapshotsRef = useRef([]); // Stores previous state JSONs for quick redo
   const historyRef = useRef({ history: [], historyIndex: -1 }); // Ref to access latest history
 
-  const applyPanOffsets = useCallback((nextPanX, nextPanY) => {
-    if (!canvas) return;
-    const vpt = canvas.viewportTransform ? [...canvas.viewportTransform] : [1, 0, 0, 1, 0, 0];
-    vpt[4] = nextPanX;
-    vpt[5] = nextPanY;
-    canvas.setViewportTransform(vpt);
-    canvas.renderAll();
-  }, [canvas]);
-
   const resetPanOffsets = useCallback(() => {
-    setPanX(0);
-    setPanY(0);
     if (canvas) {
       canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
       canvas.renderAll();
     }
   }, [canvas]);
-
-  useEffect(() => {
-    applyPanOffsets(panX, panY);
-  }, [panX, panY, applyPanOffsets]);
 
   const clearSnapshots = () => {
     if (snapshotsRef.current.length > 0) {
@@ -177,14 +162,6 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
     historyRef.current.historyIndex = historyIndex;
   }, [history, historyIndex]);
 
-  const handleHorizontalPanChange = (e) => {
-    setPanX(Number(e.target.value));
-  };
-
-  const handleVerticalPanChange = (e) => {
-    setPanY(Number(e.target.value));
-  };
-
   // --- Initialization ---
   useEffect(() => {
     // Fetch Files
@@ -194,8 +171,10 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
 
     // Initialize Canvas
     const container = document.querySelector('.canvas-wrapper');
-    const canvasWidth = container ? container.clientWidth - 80 : 800;
-    const canvasHeight = container ? container.clientHeight - 80 : 600;
+    const computedWidth = container ? container.clientWidth - 80 : 800;
+    const computedHeight = container ? container.clientHeight - 80 : 600;
+    const canvasWidth = Math.max(computedWidth, CANVAS_MIN_WIDTH);
+    const canvasHeight = Math.max(computedHeight, CANVAS_MIN_HEIGHT);
     
     const initialBgColor = '#ffffff';
     const c = new fabric.Canvas('workbenchCanvas', {
@@ -334,8 +313,10 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
     const resizeCanvas = () => {
         const container = document.querySelector('.canvas-wrapper');
         if (container && c) {
-            const newWidth = container.clientWidth - 80;
-            const newHeight = container.clientHeight - 80;
+            const computedWidth = container.clientWidth - 80;
+            const computedHeight = container.clientHeight - 80;
+            const newWidth = Math.max(computedWidth, CANVAS_MIN_WIDTH);
+            const newHeight = Math.max(computedHeight, CANVAS_MIN_HEIGHT);
             c.setWidth(newWidth);
             c.setHeight(newHeight);
             c.renderAll();
@@ -388,7 +369,6 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
         canvasWrapper.style.backgroundColor = '#ffffff';
       }
     }
-    resetPanOffsets();
 
     // Reset saved positions
     setSavedPositions({ chart: null, title: null, pictograms: [] });
@@ -640,6 +620,8 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
     setSelectedPictograms([]);
     setTitleOptions([]);
     setPictogramOptions([]);
+    setSavedPositions({ chart: null, title: null, pictograms: [] });
+    setLayoutNeedsFreshLoad(true);
 
     setSelectedReference(refName);
     setLoading(true);
@@ -834,15 +816,27 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
 
   // Auto-reload canvas when assets change
   useEffect(() => {
-      console.log('useEffect triggered:', { selectedVariation, titleImage, selectedPictograms, canvas: !!canvas });
+      console.log('useEffect triggered:', { selectedVariation, titleImage, selectedPictograms, canvas: !!canvas, layoutNeedsFreshLoad });
       if (canvas && selectedVariation && (titleImage || selectedPictograms.length > 0)) {
-          // Use direct URL for chart to avoid re-generation, and overlay assets in frontend
-          // First load after reference selection should NOT preserve positions (use layout instead)
-          // Subsequent changes should preserve positions
-          const shouldPreservePositions = canvas.getObjects().length > 1;
-          loadChartToCanvas(selectedVariation, `/currentfilepath/variation_${selectedVariation}.png`, shouldPreservePositions);
+          const shouldPreservePositions = !layoutNeedsFreshLoad && canvas.getObjects().length > 1;
+          let cancelled = false;
+          const run = async () => {
+              await loadChartToCanvas(
+                  selectedVariation,
+                  `/currentfilepath/variation_${selectedVariation}.png`,
+                  shouldPreservePositions
+              );
+              if (!cancelled && layoutNeedsFreshLoad) {
+                  setLayoutNeedsFreshLoad(false);
+              }
+          };
+          run();
+          return () => {
+              cancelled = true;
+          };
       }
-  }, [canvas, titleImage, selectedPictograms, selectedVariation]);
+      return undefined;
+  }, [canvas, titleImage, selectedPictograms, selectedVariation, layoutNeedsFreshLoad]);
 
   // Auto-load refinement history when both title and pictogram are available
   useEffect(() => {
@@ -1170,7 +1164,8 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
           // Constants
           const FIXED_PICTOGRAM_SIZE = 200;
           const PICTOGRAM_PADDING = 30;
-          const TITLE_MAX_HEIGHT = 150;
+          const TITLE_BASE_WIDTH = 700;
+          const TITLE_BASE_HEIGHT = 150;
           const MIN_TITLE_CENTER_Y_OFFSET = 50;
 
           // Calculate chart boundaries from chart options
@@ -1187,14 +1182,15 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
 
           // Calculate title position based on chart position
           const calculateTitleOptions = (chartOpts, canvasWidth, canvasHeight, titleWidthRatio = 2/3, titlePadding = 10) => {
-              const titleMaxWidth = (chartOpts.maxWidth || canvasWidth * 0.9) * titleWidthRatio;
+              const chartBasedWidth = (chartOpts.maxWidth || canvasWidth * 0.9) * titleWidthRatio;
+              const titleMaxWidth = Math.max(TITLE_BASE_WIDTH, chartBasedWidth);
               const chartBounds = calculateChartBounds(chartOpts, canvasWidth, canvasHeight);
-              const titleCenterY = chartBounds.top - titlePadding - TITLE_MAX_HEIGHT / 2;
-              const minTitleCenterY = MIN_TITLE_CENTER_Y_OFFSET + TITLE_MAX_HEIGHT / 2;
+              const titleCenterY = chartBounds.top - titlePadding - TITLE_BASE_HEIGHT / 2;
+              const minTitleCenterY = MIN_TITLE_CENTER_Y_OFFSET + TITLE_BASE_HEIGHT / 2;
               
               return {
                   maxWidth: titleMaxWidth,
-                  maxHeight: TITLE_MAX_HEIGHT,
+                  maxHeight: TITLE_BASE_HEIGHT,
                   left: chartOpts.left || canvasWidth / 2, // 居中
                   top: Math.max(minTitleCenterY, titleCenterY),
                   originX: 'center',
@@ -1371,7 +1367,7 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               // Title options - 确保title在chart上方且居中，宽度为chart的2/3
               // 规则：title.top + title.height + padding = chart.top
               const titleBox = calculateBoxOptions(layout.title);
-              const titleMaxHeight = titleBox?.maxHeight || TITLE_MAX_HEIGHT;
+              const titleMaxHeight = titleBox?.maxHeight || TITLE_BASE_HEIGHT;
               const chartBounds = calculateChartBounds(chartOptions, canvas.width, canvas.height);
               const titlePadding = 0; // title和chart之间的间距
               let titleCenterY = chartBounds.top - titlePadding - titleMaxHeight / 2;
@@ -1383,7 +1379,7 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               titleOptions = {
                   left: chartOptions.left, // 强制居中
                   top: titleCenterY,
-                  maxWidth: chartOptions.maxWidth,
+                  maxWidth: Math.max(TITLE_BASE_WIDTH, chartOptions.maxWidth),
                   maxHeight: titleMaxHeight,
                   originX: 'center',
                   originY: 'center'
@@ -2207,86 +2203,50 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
 
       {/* Main Preview Area */}
       <div className="main-preview">
-        <div className="preview-header">可编辑画布</div>
+        <div className="preview-toolbar">
+          <div className="preview-header">可编辑画布</div>
+          <div className="canvas-controls">
+            <button 
+              onClick={handleDelete}
+              disabled={!canvas || !hasSelection}
+              style={{
+                padding: '8px 16px',
+                background: (!canvas || !hasSelection) ? '#e0e0e0' : '#ef4444',
+                color: (!canvas || !hasSelection) ? '#999' : 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: (!canvas || !hasSelection) ? 'not-allowed' : 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                opacity: (!canvas || !hasSelection) ? 0.5 : 1
+              }}
+              title="删除选中元素 (Delete)"
+            >
+              🗑️ 删除
+            </button>
+            <button
+              onClick={handleDownloadCanvas}
+              disabled={!canvas}
+              style={{
+                padding: '8px 16px',
+                background: !canvas ? '#e0e0e0' : '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: !canvas ? 'not-allowed' : 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                opacity: !canvas ? 0.5 : 1
+              }}
+              title="裁剪导出当前画布内容"
+            >
+              ⬇️ 下载
+            </button>
+          </div>
+        </div>
         <div className="canvas-wrapper">
             <canvas id="workbenchCanvas" />
-            <div className="canvas-pan-slider-horizontal">
-              <input
-                className="canvas-pan-range horizontal"
-                type="range"
-                min={-PAN_RANGE}
-                max={PAN_RANGE}
-                step={10}
-                value={panX}
-                onChange={handleHorizontalPanChange}
-                disabled={!canvas}
-                aria-label="水平视图滑块"
-              />
-            </div>
-            <div className="canvas-pan-slider-vertical">
-              <input
-                className="canvas-pan-range vertical"
-                type="range"
-                min={-PAN_RANGE}
-                max={PAN_RANGE}
-                step={10}
-                value={panY}
-                onChange={handleVerticalPanChange}
-                disabled={!canvas}
-                aria-label="垂直视图滑块"
-                orient="vertical"
-              />
-            </div>
         </div>
-        
-        {/* Canvas Control Buttons */}
-        <div className="canvas-controls" style={{
-          position: 'absolute',
-          top: '24px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          gap: '8px',
-          zIndex: 10
-        }}>
-          <button 
-            onClick={handleDelete}
-            disabled={!canvas || !hasSelection}
-            style={{
-              padding: '8px 16px',
-              background: (!canvas || !hasSelection) ? '#e0e0e0' : '#ef4444',
-              color: (!canvas || !hasSelection) ? '#999' : 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: (!canvas || !hasSelection) ? 'not-allowed' : 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              opacity: (!canvas || !hasSelection) ? 0.5 : 1
-            }}
-            title="删除选中元素 (Delete)"
-          >
-            🗑️ 删除
-          </button>
-          <button
-            onClick={handleDownloadCanvas}
-            disabled={!canvas}
-            style={{
-              padding: '8px 16px',
-              background: !canvas ? '#e0e0e0' : '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: !canvas ? 'not-allowed' : 'pointer',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              opacity: !canvas ? 0.5 : 1
-            }}
-            title="裁剪导出当前画布内容"
-          >
-            ⬇️ 下载
-          </button>
-        </div>
-
       </div>
 
       {/* Loading Overlay */}
