@@ -573,8 +573,43 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
       setLoadingText('Merging chart types...');
       const mergedTypes = mergeChartTypesByImage(validatedTypes);
       
-      setTotalChartTypes(mergedTypes.length);
-      setChartTypes(mergedTypes);
+      // 检查每个 chart type 是否有对应的 variations
+      setLoadingText('Checking variations for chart types...');
+      const typesWithVariations = [];
+      for (const type of mergedTypes) {
+        const actualType = type.mergedTypes ? type.mergedTypes[0] : type.type;
+        try {
+          // 临时选择这个 chart type 来检查是否有 variations
+          await axios.get(`/api/chart_types/select/${actualType}`);
+          const variationsRes = await axios.get('/api/variations');
+          const variationCount = variationsRes.data.total || 0;
+          
+          console.log('[DEBUG] Chart type variation check:', {
+            chartType: actualType,
+            variationCount: variationCount,
+            hasVariations: variationCount > 0
+          });
+          
+          if (variationCount > 0) {
+            typesWithVariations.push(type);
+          } else {
+            console.warn('[DEBUG] Chart type has no variations, filtering out:', actualType);
+          }
+        } catch (err) {
+          console.error('[DEBUG] Error checking variations for chart type:', actualType, err);
+          // 如果检查失败，仍然保留这个 chart type（可能是网络问题）
+          typesWithVariations.push(type);
+        }
+      }
+      
+      console.log('[DEBUG] Final chart types with variations:', {
+        originalCount: mergedTypes.length,
+        filteredCount: typesWithVariations.length,
+        filtered: typesWithVariations.map(t => t.type)
+      });
+      
+      setTotalChartTypes(typesWithVariations.length);
+      setChartTypes(typesWithVariations);
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -624,6 +659,12 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
 
 
   const handleChartTypeSelect = async (typeItem) => {
+    console.log('[DEBUG] handleChartTypeSelect called', {
+      typeItem,
+      originalType: typeItem.type,
+      mergedTypes: typeItem.mergedTypes
+    });
+
     // Reset downstream state
     setSelectedVariation('');
     setVariations([]);
@@ -642,14 +683,21 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
 
     // 如果这是合并的类型，使用第一个类型
     const actualType = typeItem.mergedTypes ? typeItem.mergedTypes[0] : typeItem.type;
+    console.log('[DEBUG] Selected chart type:', actualType, {
+      isMerged: !!typeItem.mergedTypes,
+      allMergedTypes: typeItem.mergedTypes
+    });
+    
     setSelectedChartType(actualType);
     setLoading(true);
     setLoadingText('Loading variations...');
     try {
-      await axios.get(`/api/chart_types/select/${actualType}`);
+      const selectRes = await axios.get(`/api/chart_types/select/${actualType}`);
+      console.log('[DEBUG] Chart type select response:', selectRes.data);
+      
       await fetchVariations();
     } catch (err) {
-      console.error(err);
+      console.error('[DEBUG] Error selecting chart type:', err);
       setLoading(false);
     }
   };
@@ -660,7 +708,23 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
     setLoadingText('Generating variation previews...');
     try {
       const res = await axios.get('/api/variations');
+      console.log('[DEBUG] fetchVariations response:', {
+        total: res.data.total,
+        variationsCount: res.data.variations?.length || 0,
+        variations: res.data.variations,
+        selectedChartType: selectedChartType
+      });
+      
       setTotalVariations(res.data.total);
+      
+      // 检查是否有 variations
+      if (!res.data.variations || res.data.variations.length === 0) {
+        console.warn('[DEBUG] No variations found for chart type:', selectedChartType);
+        setVariations([]);
+        setLoading(false);
+        return;
+      }
+      
       // Trigger preview generation
       await axios.get('/api/variations/generate_previews');
       
@@ -669,11 +733,21 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
           // Filter out 'plain' variations as per requirements
           // Note: Backend now filters 'plain' too, but keeping this safe
           const filtered = (res.data.variations || []).filter(v => !v.name.toLowerCase().includes('plain'));
+          console.log('[DEBUG] Filtered variations:', {
+            originalCount: res.data.variations?.length || 0,
+            filteredCount: filtered.length,
+            filtered: filtered.map(v => v.name)
+          });
+          
+          if (filtered.length === 0) {
+            console.warn('[DEBUG] No variations after filtering for chart type:', selectedChartType);
+          }
+          
           setVariations(filtered);
           setPreviewTimestamp(Date.now());
       }, 'variation_preview');
     } catch (err) {
-      console.error(err);
+      console.error('[DEBUG] Error fetching variations:', err);
       setLoading(false);
     }
   };

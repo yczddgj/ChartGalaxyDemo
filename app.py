@@ -388,9 +388,27 @@ def get_chart_types():
     global generation_status
     load_generation_status()
 
-    # 如果缓存中已有 available_chart_types，直接使用
+    # 如果缓存中已有 available_chart_types，验证文件是否存在后再使用
     if generation_status.get('available_chart_types'):
         chart_types = generation_status['available_chart_types']
+        # 验证缓存中的图片文件是否仍然存在
+        static_chart_types_dir = os.path.join(app.root_path, 'static', 'chart_types')
+        filtered_chart_types = []
+        for ct in chart_types:
+            if ct.get('image_url'):
+                # 从 image_url 中提取文件名，例如 "/static/chart_types/Bar Chart.png" -> "Bar Chart.png"
+                image_filename = ct['image_url'].replace('/static/chart_types/', '')
+                image_path = os.path.join(static_chart_types_dir, image_filename)
+                if os.path.exists(image_path):
+                    filtered_chart_types.append(ct)
+                    print(f"图片文件存在: {image_path}")
+                else:
+                    print(f"图片文件不存在: {image_path}")
+        chart_types = filtered_chart_types
+        # 如果过滤后有变化，更新缓存
+        if len(chart_types) != len(generation_status['available_chart_types']):
+            generation_status['available_chart_types'] = chart_types
+            save_generation_status()
     else:
         # 从 extraction_templates 中提取可用的 chart type
         templates = generation_status.get('extraction_templates', [])
@@ -451,11 +469,27 @@ def get_chart_types():
                 # 1. Try exact match (lowercase)
                 if search_name in chart_type_images:
                     image_filename = chart_type_images[search_name]
+                    print(f"[MATCH] Exact match: '{chart_type_name}' -> '{image_filename}'")
                 else:
-                    # 2. Try fuzzy match
-                    matches = difflib.get_close_matches(search_name, chart_type_images.keys(), n=1, cutoff=0.8)
+                    # 2. Try fuzzy match (提高阈值到 0.85，并验证相似度)
+                    matches = difflib.get_close_matches(search_name, chart_type_images.keys(), n=1, cutoff=0.85)
                     if matches:
-                        image_filename = chart_type_images[matches[0]]
+                        matched_key = matches[0]
+                        # 计算实际相似度
+                        similarity = difflib.SequenceMatcher(None, search_name, matched_key).ratio()
+                        # 额外检查：确保匹配的关键词有重叠（至少有一个主要词匹配）
+                        search_words = set(search_name.split())
+                        matched_words = set(matched_key.split())
+                        common_words = search_words & matched_words
+                        # 排除常见词 "chart", "bar", "area" 等
+                        meaningful_words = {'chart', 'bar', 'area', 'line', 'graph', 'pie', 'donut', 'scatter', 'radar', 'gauge', 'funnel', 'treemap', 'heatmap', 'histogram'}
+                        meaningful_common = common_words - meaningful_words
+                        
+                        if similarity >= 0.85 and (len(meaningful_common) > 0 or similarity >= 0.9):
+                            image_filename = chart_type_images[matched_key]
+                            print(f"[MATCH] Fuzzy match: '{chart_type_name}' -> '{image_filename}' (similarity: {similarity:.2f}, common words: {meaningful_common})")
+                        else:
+                            print(f"[MATCH] Fuzzy match rejected: '{chart_type_name}' -> '{matched_key}' (similarity: {similarity:.2f} too low or no meaningful words)")
                     
                     # 3. If not found and contains "multiple", try removing "multiple"
                     if not image_filename and 'multiple' in search_name:
@@ -467,19 +501,37 @@ def get_chart_types():
                         # Try exact match with stripped name
                         if stripped_name in chart_type_images:
                             image_filename = chart_type_images[stripped_name]
+                            print(f"[MATCH] Exact match (stripped): '{chart_type_name}' -> '{image_filename}'")
                         else:
-                            # Try fuzzy match with stripped name
-                            matches = difflib.get_close_matches(stripped_name, chart_type_images.keys(), n=1, cutoff=0.8)
+                            # Try fuzzy match with stripped name (同样提高阈值)
+                            matches = difflib.get_close_matches(stripped_name, chart_type_images.keys(), n=1, cutoff=0.85)
                             if matches:
-                                image_filename = chart_type_images[matches[0]]
+                                matched_key = matches[0]
+                                similarity = difflib.SequenceMatcher(None, stripped_name, matched_key).ratio()
+                                search_words = set(stripped_name.split())
+                                matched_words = set(matched_key.split())
+                                common_words = search_words & matched_words
+                                meaningful_words = {'chart', 'bar', 'area', 'line', 'graph', 'pie', 'donut', 'scatter', 'radar', 'gauge', 'funnel', 'treemap', 'heatmap', 'histogram'}
+                                meaningful_common = common_words - meaningful_words
+                                
+                                if similarity >= 0.85 and (len(meaningful_common) > 0 or similarity >= 0.9):
+                                    image_filename = chart_type_images[matched_key]
+                                    print(f"[MATCH] Fuzzy match (stripped): '{chart_type_name}' -> '{image_filename}' (similarity: {similarity:.2f})")
+                    
+                    if not image_filename:
+                        print(f"[MATCH] No match found for: '{chart_type_name}'")
                 
-                image_url = f"/static/chart_types/{image_filename}" if image_filename else None
-
-                chart_types.append({
-                    'type': chart_type_name,
-                    'template': representative_template,
-                    'image_url': image_url
-                })
+                # 检查图片文件是否真实存在
+                if image_filename:
+                    image_path = os.path.join(static_chart_types_dir, image_filename)
+                    if os.path.exists(image_path):
+                        image_url = f"/static/chart_types/{image_filename}"
+                        chart_types.append({
+                            'type': chart_type_name,
+                            'template': representative_template,
+                            'image_url': image_url
+                        })
+                    # 如果文件不存在，跳过这个 chart type
 
         # 保存到 generation_status
         generation_status['available_chart_types'] = chart_types
