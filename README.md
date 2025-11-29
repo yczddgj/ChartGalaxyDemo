@@ -1,6 +1,6 @@
 # ChartGalaxy - 信息图表生成器
 
-这是一个前后端分离的应用：后端基于 Flask，前端位于 `frontend/` 目录并使用现代化 React 工作台来展示数据与生成信息图表。
+这是一个前后端分离的应用：后端基于 Flask，前端位于 `frontend/` 目录并使用React 工作台来展示数据与生成信息图表。
 
 ## 功能特点
 
@@ -55,5 +55,4 @@ npm run dev
 - **前端**: React + Vite + Fabric.js
 - **数据处理**: Pandas
 
-- **UI设计**: 现代化渐变设计 
 

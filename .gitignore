@@ -11,3 +11,4 @@ variation.json
 *.pyc
 chart_modules/ChartGalaxy/example_based_generation/generate_title_image_prompt.md
 chart_modules/ChartGalaxy/example_based_generation/generate_pictogram_prompt.md
+chart_modules/title_generation/prompts/generated_output.md

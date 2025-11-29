@@ -1236,6 +1236,10 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
           const TITLE_BASE_WIDTH = 700;
           const TITLE_BASE_HEIGHT = 150;
           const MIN_TITLE_CENTER_Y_OFFSET = 50;
+          const TITLE_ASPECT_THRESHOLD = 1.9;
+          const TITLE_WIDE_WIDTH_RATIO = 2 / 3;
+          const TITLE_COMPACT_WIDTH_RATIO = 0.55;
+          const TRANSPARENT_ALPHA_THRESHOLD = 35;
 
           // Calculate chart boundaries from chart options
           const calculateChartBounds = (chartOpts, canvasWidth, canvasHeight) => {
@@ -1256,8 +1260,8 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               chartOpts,
               canvasWidth,
               canvasHeight,
-              titleWidthRatio = 2/3,
-              titlePadding = 10,
+              titleWidthRatio = TITLE_WIDE_WIDTH_RATIO,
+              titlePadding = 0,
               chartBoundsOverride = null,
               titleMaxHeightOverride = TITLE_BASE_HEIGHT
           ) => {
@@ -1356,6 +1360,42 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               return { left: pictogramLeft, top: pictogramTop };
           };
 
+          const calculateOutsidePictogramPosition = (chartBounds, canvasWidth, canvasHeight) => {
+              if (!chartBounds) {
+                  return {
+                      left: Math.min(
+                          canvasWidth - FIXED_PICTOGRAM_SIZE / 2 - PICTOGRAM_PADDING,
+                          canvasWidth / 2
+                      ),
+                      top: Math.min(
+                          canvasHeight - FIXED_PICTOGRAM_SIZE / 2 - PICTOGRAM_PADDING,
+                          canvasHeight / 2
+                      )
+                  };
+              }
+
+              const halfSize = FIXED_PICTOGRAM_SIZE / 2;
+              const desiredLeft = chartBounds.right + halfSize + PICTOGRAM_PADDING;
+              let finalLeft = desiredLeft;
+              if (!Number.isFinite(finalLeft)) {
+                  finalLeft = chartBounds.right + halfSize + PICTOGRAM_PADDING;
+              }
+
+              const chartMidY = chartBounds.top + chartBounds.height / 2;
+              let finalTop = chartMidY;
+              const minTop = halfSize + PICTOGRAM_PADDING;
+              const maxTop = canvasHeight - halfSize - PICTOGRAM_PADDING;
+              if (!Number.isFinite(finalTop)) {
+                  finalTop = chartBounds.bottom - halfSize - PICTOGRAM_PADDING;
+              }
+              finalTop = Math.min(Math.max(finalTop, minTop), maxTop);
+
+              return {
+                  left: finalLeft,
+                  top: finalTop
+              };
+          };
+
           const computeRegionAlphaScore = (data, width, height, centerX, centerY, regionWidth, regionHeight) => {
               if (!data || !width || !height) return Infinity;
               const halfW = Math.max(1, Math.floor(regionWidth / 2));
@@ -1364,11 +1404,13 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               const endX = Math.min(width - 1, Math.floor(centerX + halfW));
               const startY = Math.max(0, Math.floor(centerY - halfH));
               const endY = Math.min(height - 1, Math.floor(centerY + halfH));
-              const sampleStep = Math.max(1, Math.floor(Math.min(regionWidth, regionHeight) / 8));
+              const stepX = Math.max(1, Math.floor(regionWidth / 6));
+              const stepY = Math.max(1, Math.floor(regionHeight / 6));
+
               let totalAlpha = 0;
               let samples = 0;
-              for (let y = startY; y <= endY; y += sampleStep) {
-                  for (let x = startX; x <= endX; x += sampleStep) {
+              for (let y = startY; y <= endY; y += stepY) {
+                  for (let x = startX; x <= endX; x += stepX) {
                       const alpha = data[(y * width + x) * 4 + 3];
                       totalAlpha += alpha;
                       samples++;
@@ -1382,7 +1424,6 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               chartObj,
               chartBounds,
               pictogramSize,
-              candidateCanvasPositions = [],
               referenceCanvasPosition = null
           ) => {
               try {
@@ -1402,118 +1443,118 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
                   const imageData = ctx.getImageData(0, 0, naturalWidth, naturalHeight);
                   const data = imageData.data;
 
-                  const scaleX = chartObj.getScaledWidth() / naturalWidth || 1;
-                  const scaleY = chartObj.getScaledHeight() / naturalHeight || 1;
-                  const pictogramPxWidth = Math.max(4, Math.round(pictogramSize / scaleX));
-                  const pictogramPxHeight = Math.max(4, Math.round(pictogramSize / scaleY));
-                  const halfPxW = Math.floor(pictogramPxWidth / 2);
-                  const halfPxH = Math.floor(pictogramPxHeight / 2);
+                  const scaleX = (chartObj.getScaledWidth() || naturalWidth) / naturalWidth;
+                  const scaleY = (chartObj.getScaledHeight() || naturalHeight) / naturalHeight;
+                  const regionWidth = Math.max(4, Math.round(pictogramSize / Math.max(scaleX, 0.0001)));
+                  const regionHeight = Math.max(4, Math.round(pictogramSize / Math.max(scaleY, 0.0001)));
+                  const halfRegionW = Math.floor(regionWidth / 2);
+                  const halfRegionH = Math.floor(regionHeight / 2);
 
                   const clamp01 = (value) => Math.min(1, Math.max(0, value));
-                  const normalizedCandidates = [];
+                  const candidateCenters = [];
 
-                  const toNormalizedCandidate = (pos, priority = 0) => {
-                      if (!pos) return;
-                      const normX = clamp01(
-                          (pos.left - chartBounds.left) / Math.max(chartBounds.width, 1)
+                  const pushCanvasCandidate = (position, priority = 0) => {
+                      if (!position) return;
+                      const normalizedX = clamp01(
+                          (position.left - chartBounds.left) / Math.max(chartBounds.width, 1)
                       );
-                      const normY = clamp01(
-                          (pos.top - chartBounds.top) / Math.max(chartBounds.height, 1)
+                      const normalizedY = clamp01(
+                          (position.top - chartBounds.top) / Math.max(chartBounds.height, 1)
                       );
-                      normalizedCandidates.push({
-                          normX,
-                          normY,
+                      candidateCenters.push({
+                          x: normalizedX * naturalWidth,
+                          y: normalizedY * naturalHeight,
                           priority
                       });
                   };
 
-                  candidateCanvasPositions.forEach((pos) => {
-                      toNormalizedCandidate(pos, pos.priority ?? 0);
-                  });
-
-                  if (!normalizedCandidates.length) {
-                      const defaultQuadrants = [
-                          { normX: 0.25, normY: 0.75, priority: 1 },
-                          { normX: 0.75, normY: 0.75, priority: 2 },
-                          { normX: 0.25, normY: 0.25, priority: 3 },
-                          { normX: 0.75, normY: 0.25, priority: 4 }
-                      ];
-                      defaultQuadrants.forEach((q) => normalizedCandidates.push(q));
+                  if (referenceCanvasPosition) {
+                      pushCanvasCandidate(referenceCanvasPosition, 0);
                   }
 
-                  const referenceNormalized = referenceCanvasPosition
-                      ? {
-                          x: clamp01(
-                              (referenceCanvasPosition.left - chartBounds.left) / Math.max(chartBounds.width, 1)
-                          ),
-                          y: clamp01(
-                              (referenceCanvasPosition.top - chartBounds.top) / Math.max(chartBounds.height, 1)
-                          )
-                      }
-                      : null;
-
-                  const offsetSteps = [-0.08, -0.04, 0, 0.04, 0.08];
-                  const stridePenaltyBase = 15;
-                  const distanceWeight = referenceNormalized ? 60 : 0;
-
-                  let bestScore = Infinity;
-                  let bestNormalizedPosition = null;
-
-                  normalizedCandidates.forEach((candidate, idx) => {
-                      offsetSteps.forEach((dx) => {
-                          offsetSteps.forEach((dy) => {
-                              const normX = clamp01(candidate.normX + dx);
-                              const normY = clamp01(candidate.normY + dy);
-                              const centerX = Math.round(normX * naturalWidth);
-                              const centerY = Math.round(normY * naturalHeight);
-                              if (
-                                  centerX - halfPxW < 0 ||
-                                  centerX + halfPxW >= naturalWidth ||
-                                  centerY - halfPxH < 0 ||
-                                  centerY + halfPxH >= naturalHeight
-                              ) {
-                                  return;
-                              }
-
-                              const alphaScore = computeRegionAlphaScore(
-                                  data,
-                                  naturalWidth,
-                                  naturalHeight,
-                                  centerX,
-                                  centerY,
-                                  pictogramPxWidth,
-                                  pictogramPxHeight
-                              );
-                              if (!isFinite(alphaScore)) return;
-
-                              const priorityPenalty = (candidate.priority ?? idx) * stridePenaltyBase;
-                              const distancePenalty = referenceNormalized
-                                  ? Math.hypot(normX - referenceNormalized.x, normY - referenceNormalized.y) *
-                                    distanceWeight
-                                  : 0;
-                              const totalScore = alphaScore + priorityPenalty + distancePenalty;
-
-                              if (totalScore < bestScore) {
-                                  bestScore = totalScore;
-                                  bestNormalizedPosition = { normX, normY };
-                              }
-                          });
+                  const quadrants = [
+                      { x: 0.25, y: 0.75 }, // 左下
+                      { x: 0.75, y: 0.75 }, // 右下
+                      { x: 0.25, y: 0.25 }, // 左上
+                      { x: 0.75, y: 0.25 }  // 右上
+                  ];
+                  quadrants.forEach((q, index) => {
+                      candidateCenters.push({
+                          x: q.x * naturalWidth,
+                          y: q.y * naturalHeight,
+                          priority: index + 1
                       });
                   });
 
-                  if (!bestNormalizedPosition) return null;
-                  const rawCanvasX = chartBounds.left + bestNormalizedPosition.normX * chartBounds.width;
-                  const rawCanvasY = chartBounds.top + bestNormalizedPosition.normY * chartBounds.height;
+                  const gridSteps = 5;
+                  for (let gy = 1; gy < gridSteps; gy++) {
+                      for (let gx = 1; gx < gridSteps; gx++) {
+                          candidateCenters.push({
+                              x: (gx / gridSteps) * naturalWidth,
+                              y: (gy / gridSteps) * naturalHeight,
+                              priority: 5 + gy + gx
+                          });
+                      }
+                  }
+
+                  let bestCandidate = null;
+                  candidateCenters.forEach((candidate) => {
+                      const { x, y } = candidate;
+                      if (
+                          x - halfRegionW < 0 ||
+                          x + halfRegionW >= naturalWidth ||
+                          y - halfRegionH < 0 ||
+                          y + halfRegionH >= naturalHeight
+                      ) {
+                          return;
+                      }
+                      const alphaScore = computeRegionAlphaScore(
+                          data,
+                          naturalWidth,
+                          naturalHeight,
+                          x,
+                          y,
+                          regionWidth,
+                          regionHeight
+                      );
+                      if (!isFinite(alphaScore)) return;
+
+                      if (
+                          !bestCandidate ||
+                          alphaScore + candidate.priority * 2 < bestCandidate.score
+                      ) {
+                          bestCandidate = {
+                              score: alphaScore + candidate.priority * 2,
+                              alpha: alphaScore,
+                              x,
+                              y
+                          };
+                      }
+                  });
+
+                  if (!bestCandidate || bestCandidate.alpha > TRANSPARENT_ALPHA_THRESHOLD) {
+                      return null;
+                  }
+
+                  const normalizedX = bestCandidate.x / naturalWidth;
+                  const normalizedY = bestCandidate.y / naturalHeight;
+                  const rawLeft = chartBounds.left + normalizedX * chartBounds.width;
+                  const rawTop = chartBounds.top + normalizedY * chartBounds.height;
                   const halfSize = pictogramSize / 2;
-                  const clampedX = Math.max(
+
+                  const clampedLeft = Math.max(
                       chartBounds.left + halfSize + PICTOGRAM_PADDING,
-                      Math.min(rawCanvasX, chartBounds.right - halfSize - PICTOGRAM_PADDING)
+                      Math.min(rawLeft, chartBounds.right - halfSize - PICTOGRAM_PADDING)
                   );
-                  const clampedY = Math.max(
+                  const clampedTop = Math.max(
                       chartBounds.top + halfSize + PICTOGRAM_PADDING,
-                      Math.min(rawCanvasY, chartBounds.bottom - halfSize - PICTOGRAM_PADDING)
+                      Math.min(rawTop, chartBounds.bottom - halfSize - PICTOGRAM_PADDING)
                   );
-                  return { left: clampedX, top: clampedY };
+
+                  return {
+                      left: clampedLeft,
+                      top: clampedTop
+                  };
               } catch (err) {
                   console.warn('Failed to analyse transparent region for pictogram placement:', err);
                   return null;
@@ -1523,12 +1564,12 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
           // ========== Main Layout Logic ==========
           // Determine layout options
           let chartOptions, titleOptions, imageOptions;
-          let preferredPictogramPosition = null;
           let titleNeedsAutoPosition = true;
           let titlePaddingValue = 10;
-          let titleWidthRatio = 2 / 3;
+          let titleWidthRatio = TITLE_WIDE_WIDTH_RATIO;
           let titleHeightOverride = TITLE_BASE_HEIGHT;
           let layoutReferencePosition = null;
+          let preferredPictogramPosition = null;
 
           // Check if we should use saved positions (highest priority)
           if (preservePositions && currentPositions.chart) {
@@ -1558,7 +1599,6 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
                   originX: 'center',
                   originY: 'center'
               };
-              preferredPictogramPosition = { left: pictogramPos.left, top: pictogramPos.top };
           } else if (layout && layout.width && layout.height) {
               // 使用参考图布局：将 layout 按比例缩放到画布中并居中
               console.log('Using reference layout:', layout);
@@ -1634,7 +1674,7 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               const titleBox = calculateBoxOptions(layout.title);
               const titleMaxHeight = titleBox?.maxHeight || TITLE_BASE_HEIGHT;
               titleHeightOverride = titleMaxHeight;
-              titlePaddingValue = 10; // title和chart之间的间距
+              titlePaddingValue = 0; // title和chart之间的间距
               titleNeedsAutoPosition = true;
 
               // Image/Pictogram options - 先尝试使用reference layout中的位置，检查是否重叠
@@ -1686,11 +1726,10 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
                   originX: 'center',
                   originY: 'center'
               };
-              preferredPictogramPosition = { left: pictogramPos.left, top: pictogramPos.top };
           } else {
               // Default layout (no reference)
               // Chart居中偏下
-              const chartTop = canvas.height * 0.15;
+              const chartTop = canvas.height * 0.65;
               chartOptions = {
                   maxWidth: canvas.width * 0.9,
                   maxHeight: canvas.height * 0.7,
@@ -1714,7 +1753,6 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
                   originX: 'center',
                   originY: 'center'
               };
-              preferredPictogramPosition = { left: pictogramPos.left, top: pictogramPos.top };
           }
 
           // 1. Add Chart
@@ -1727,6 +1765,26 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
           let resolvedChartBounds = getBoundsFromObject(chartObject);
           if (!resolvedChartBounds && chartOptions) {
               resolvedChartBounds = calculateChartBounds(chartOptions, canvas.width, canvas.height);
+          }
+
+          if (!preservePositions && chartObject && resolvedChartBounds && imageOptions) {
+              preferredPictogramPosition = findTransparentAreaPosition(
+                  chartObject,
+                  resolvedChartBounds,
+                  FIXED_PICTOGRAM_SIZE,
+                  layoutReferencePosition
+              );
+              if (!preferredPictogramPosition) {
+                  preferredPictogramPosition = calculateOutsidePictogramPosition(
+                      resolvedChartBounds,
+                      canvas.width,
+                      canvas.height
+                  );
+              }
+              if (preferredPictogramPosition) {
+                  imageOptions.left = preferredPictogramPosition.left;
+                  imageOptions.top = preferredPictogramPosition.top;
+              }
           }
 
           // 2. Add Title (if exists)
@@ -1746,9 +1804,18 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               const titleUrl = `/currentfilepath/${titleImage}?t=${Date.now()}`;
               const titleObject = await addImage(titleUrl, { ...titleOptions, trimTransparent: true });
               if (titleObject && shouldAutoAdjustTitle && resolvedChartBounds) {
-                  const chartWidth = Math.max(1, resolvedChartBounds.width || (resolvedChartBounds.right - resolvedChartBounds.left));
-                  const desiredWidth = chartWidth * (2 / 3);
+                  const chartWidth = Math.max(
+                      1,
+                      resolvedChartBounds.width || (resolvedChartBounds.right - resolvedChartBounds.left)
+                  );
                   const currentWidth = titleObject.getScaledWidth();
+                  const currentHeight = Math.max(1, titleObject.getScaledHeight());
+                  const titleAspectRatio = currentWidth / currentHeight;
+                  const desiredWidthRatio =
+                      titleAspectRatio < TITLE_ASPECT_THRESHOLD
+                          ? TITLE_COMPACT_WIDTH_RATIO
+                          : TITLE_WIDE_WIDTH_RATIO;
+                  const desiredWidth = chartWidth * desiredWidthRatio;
                   if (currentWidth > 0 && desiredWidth > 0) {
                       const scaleFactor = desiredWidth / currentWidth;
                       titleObject.scaleX = (titleObject.scaleX || 1) * scaleFactor;
@@ -1771,46 +1838,6 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
           }
 
           // 3. Add Pictograms (if exist) - 始终使用固定大小
-          let transparentPreferredPosition = null;
-          if (!preservePositions && chartObject && resolvedChartBounds) {
-              const candidateCanvasPositions = [];
-              if (layoutReferencePosition) {
-                  candidateCanvasPositions.push({
-                      left: layoutReferencePosition.left,
-                      top: layoutReferencePosition.top,
-                      priority: 0
-                  });
-              }
-              const quadrantCenters = [
-                  { normX: 0.25, normY: 0.75, priority: 1 }, // 左下
-                  { normX: 0.75, normY: 0.75, priority: 2 }, // 右下
-                  { normX: 0.25, normY: 0.25, priority: 3 }, // 左上
-                  { normX: 0.75, normY: 0.25, priority: 4 }  // 右上
-              ];
-              quadrantCenters.forEach(({ normX, normY, priority }) => {
-                  candidateCanvasPositions.push({
-                      left: resolvedChartBounds.left + resolvedChartBounds.width * normX,
-                      top: resolvedChartBounds.top + resolvedChartBounds.height * normY,
-                      priority
-                  });
-              });
-
-              transparentPreferredPosition = findTransparentAreaPosition(
-                  chartObject,
-                  resolvedChartBounds,
-                  FIXED_PICTOGRAM_SIZE,
-                  candidateCanvasPositions,
-                  layoutReferencePosition
-              );
-              if (transparentPreferredPosition) {
-                  preferredPictogramPosition = { ...transparentPreferredPosition };
-                  if (imageOptions) {
-                      imageOptions.left = transparentPreferredPosition.left;
-                      imageOptions.top = transparentPreferredPosition.top;
-                  }
-              }
-          }
-
           if (selectedPictograms && selectedPictograms.length > 0) {
               for (let i = 0; i < selectedPictograms.length; i++) {
                   const pName = selectedPictograms[i];
@@ -1824,10 +1851,6 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
                       currentOptions = { ...currentPositions.pictograms[i] };
                   } else {
                       currentOptions = { ...imageOptions };
-                      if (preferredPictogramPosition) {
-                          currentOptions.left = preferredPictogramPosition.left;
-                          currentOptions.top = preferredPictogramPosition.top;
-                      }
                       // 确保使用固定大小
                       currentOptions.maxWidth = FIXED_PICTOGRAM_SIZE;
                       currentOptions.maxHeight = FIXED_PICTOGRAM_SIZE;
@@ -2589,9 +2612,8 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
             </button>
           </div>
         </div>
-        <div className="canvas-wrapper" ref={canvasWrapperRef}>
-            <canvas id="workbenchCanvas" />
-        </div>
+        <canvas id="workbenchCanvas" />
+  
       </div>
 
       {/* Loading Overlay */}
