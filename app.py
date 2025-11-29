@@ -26,6 +26,7 @@ from chart_modules.generate_variation import generate_variation
 from chart_modules.process import conduct_reference_finding, conduct_layout_extraction, conduct_title_generation, conduct_pictogram_generation, conduct_chart_type_preview_generation, conduct_variation_preview_generation
 from chart_modules.style_refinement import process_final_export, direct_generate_with_ai, svg_to_png, check_material_cache
 from chart_modules.ChartPipeline.modules.infographics_generator.template_utils import block_list
+from chart_modules.ChartPipeline.modules.chart_type_recommender.chart_type_recommender import recommend_chart_types_with_llm
 
 
 app = Flask(__name__)
@@ -384,9 +385,46 @@ def get_layout():
 
 @app.route('/api/chart_types')
 def get_chart_types():
-    """获取去重后的 chart type 列表，每次返回3个，按照parsed_variations.json的顺序"""
+    """获取推荐的 chart type 列表，基于数据特征使用大模型推荐，每次返回3个"""
     global generation_status
     load_generation_status()
+
+    # 检查是否有选中的数据文件，如果有则使用大模型推荐
+    selected_data = generation_status.get('selected_data', '')
+    use_llm_recommendation = False
+    llm_recommendations = []
+    
+    if selected_data and os.path.exists(selected_data):
+        try:
+            # 读取数据文件
+            with open(selected_data, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # 获取所有可用的图表类型名称（从 PARSED_VARIATIONS）
+            available_chart_type_names = []
+            templates = generation_status.get('extraction_templates', [])
+            available_variations = set()
+            for template in templates:
+                parts = template[0].split('/')
+                if len(parts) >= 3:
+                    available_variations.add(parts[2])
+            
+            for parsed_item in PARSED_VARIATIONS:
+                chart_type_name = parsed_item['name']
+                variations = parsed_item.get('variations', [])
+                if any(v in available_variations for v in variations):
+                    available_chart_type_names.append(chart_type_name)
+            
+            # 使用大模型推荐
+            print(f"[DEBUG] 使用大模型推荐图表类型，数据文件: {selected_data}")
+            llm_recommendations = recommend_chart_types_with_llm(data, available_chart_type_names)
+            use_llm_recommendation = True
+            print(f"[DEBUG] 大模型推荐结果: {llm_recommendations}")
+        except Exception as e:
+            print(f"[WARNING] 使用大模型推荐失败: {e}")
+            import traceback
+            traceback.print_exc()
+            use_llm_recommendation = False
 
     # 如果缓存中已有 available_chart_types，直接使用
     if generation_status.get('available_chart_types'):
@@ -485,6 +523,62 @@ def get_chart_types():
         generation_status['available_chart_types'] = chart_types
         save_generation_status()  # 保存到缓存文件
 
+    # 如果使用了大模型推荐，只返回推荐的图表类型（最多6个）
+    if use_llm_recommendation and llm_recommendations:
+        # 只使用推荐的图表类型，不包含其他未推荐的
+        recommended_chart_types = []
+        recommended_type_names = set()
+        
+        # 创建推荐类型名称到推荐信息的映射
+        recommendation_map = {rec['type']: rec for rec in llm_recommendations}
+        
+        # 只添加推荐的图表类型（按推荐顺序，最多6个）
+        for rec in llm_recommendations[:6]:  # 确保最多6个
+            chart_type_name = rec['type']
+            if chart_type_name in recommended_type_names:
+                continue  # 跳过重复的
+            
+            # 在 chart_types 中查找匹配的项
+            found = False
+            for ct in chart_types:
+                if ct['type'] == chart_type_name:
+                    # 添加推荐信息
+                    ct['confidence'] = rec.get('confidence', 0.5)
+                    ct['reasoning'] = rec.get('reasoning', '')
+                    recommended_chart_types.append(ct)
+                    recommended_type_names.add(chart_type_name)
+                    found = True
+                    break
+            
+            # 如果在现有 chart_types 中没找到，创建一个新的
+            if not found:
+                # 尝试从 PARSED_VARIATIONS 获取信息
+                for parsed_item in PARSED_VARIATIONS:
+                    if parsed_item['name'] == chart_type_name:
+                        # 获取图片
+                        image_filename = None
+                        static_chart_types_dir = os.path.join(app.root_path, 'static', 'chart_types')
+                        if os.path.exists(static_chart_types_dir):
+                            files = os.listdir(static_chart_types_dir)
+                            chart_type_images = {f.lower().replace('.png', ''): f for f in files if f.lower().endswith('.png')}
+                            search_name = chart_type_name.lower()
+                            if search_name in chart_type_images:
+                                image_filename = chart_type_images[search_name]
+                        
+                        image_url = f"/static/chart_types/{image_filename}" if image_filename else None
+                        recommended_chart_types.append({
+                            'type': chart_type_name,
+                            'template': None,
+                            'image_url': image_url,
+                            'confidence': rec.get('confidence', 0.5),
+                            'reasoning': rec.get('reasoning', '')
+                        })
+                        recommended_type_names.add(chart_type_name)
+                        break
+        
+        chart_types = recommended_chart_types
+        print(f"[DEBUG] 只返回推荐的图表类型（{len(chart_types)}个）: {[ct['type'] for ct in chart_types]}")
+
     # 分页获取，每页3个
     page = generation_status.get('chart_type_page', 0)
     page_size = 3
@@ -498,7 +592,8 @@ def get_chart_types():
         'chart_types': current_page_types,
         'page': page,
         'total': len(chart_types),
-        'has_more': has_more
+        'has_more': has_more,
+        'recommended': use_llm_recommendation  # 标识是否使用了推荐
     })
 
 @app.route('/api/chart_types/generate_previews')
@@ -565,6 +660,9 @@ def select_chart_type(chart_type):
     templates = generation_status.get('extraction_templates', [])
     available_variation_templates = {}  # variation_name -> template_info
 
+    print(f"[DEBUG] 开始筛选 chart type: {chart_type}")
+    print(f"[DEBUG] extraction_templates 总数: {len(templates)}")
+
     for template in templates:
         parts = template[0].split('/')
         if len(parts) >= 2 and parts[1] == chart_type:
@@ -582,15 +680,21 @@ def select_chart_type(chart_type):
                 'fields': template[1] if len(template) > 1 else []
             }
 
+    print(f"[DEBUG] 找到的可用 variation 模板数: {len(available_variation_templates)}")
+    print(f"[DEBUG] 可用 variation 名称: {list(available_variation_templates.keys())}")
+    print(f"[DEBUG] parsed_variations.json 中的 variation 数: {len(parsed_variations_for_type)}")
+    print(f"[DEBUG] parsed_variations.json 中的 variation 名称: {parsed_variations_for_type}")
+
     # 按照 parsed_variations.json 的顺序排序
     variations = []
     for variation_name in parsed_variations_for_type:
-        # 过滤掉名称中包含 'plain' 的样式
-        if 'plain' in variation_name.lower():
-            continue
-            
         if variation_name in available_variation_templates:
             variations.append(available_variation_templates[variation_name])
+        else:
+            print(f"[警告] variation '{variation_name}' 在 parsed_variations.json 中，但不在 extraction_templates 中")
+
+    print(f"[DEBUG] 最终筛选出的 variations 数: {len(variations)}")
+    print(f"[DEBUG] 最终 variations: {[v['name'] for v in variations]}")
 
     generation_status['available_variations'] = variations
     save_generation_status()
@@ -603,11 +707,36 @@ def select_chart_type(chart_type):
 
 @app.route('/api/variations')
 def get_variations():
-    """获取当前 chart type 的 variations，每次返回3个"""
-    global generation_status
+    """获取当前 chart type 的 variations，每次返回3个，并验证是否在parsed_variations.json中"""
+    global generation_status, PARSED_VARIATIONS
     load_generation_status()
 
+    # 重新加载 parsed_variations.json 以确保使用最新数据
+    try:
+        with open('parsed_variations.json', 'r', encoding='utf-8') as f:
+            PARSED_VARIATIONS = json.load(f)
+    except Exception as e:
+        print(f"Warning: Could not reload parsed_variations.json: {e}")
+
     variations = generation_status.get('available_variations', [])
+    selected_chart_type = generation_status.get('selected_chart_type', '')
+    
+    # 获取当前图表类型在 parsed_variations.json 中的有效 variation 列表
+    valid_variation_names = set()
+    if selected_chart_type:
+        for parsed_item in PARSED_VARIATIONS:
+            if parsed_item['name'] == selected_chart_type:
+                valid_variation_names = {v for v in parsed_item['variations']}
+                break
+    
+    # 过滤掉不在 parsed_variations.json 中的 variations
+    if valid_variation_names:
+        filtered_variations = [v for v in variations if v.get('name') in valid_variation_names]
+        # 如果过滤后数量变化，更新缓存
+        if len(filtered_variations) != len(variations):
+            generation_status['available_variations'] = filtered_variations
+            save_generation_status()
+        variations = filtered_variations
 
     # 分页获取，每页3个
     page = generation_status.get('variation_page', 0)
@@ -623,27 +752,36 @@ def get_variations():
         'page': page,
         'total': len(variations),
         'has_more': has_more,
-        'chart_type': generation_status.get('selected_chart_type', '')
+        'chart_type': selected_chart_type
     })
 
 @app.route('/api/variations/generate_previews')
 def generate_variation_previews():
-    """为当前页的 variations 生成预览图"""
+    """为 variations 生成预览图，支持为所有或当前页生成"""
     global generation_status
     load_generation_status()
 
     variations = generation_status.get('available_variations', [])
-    page = generation_status.get('variation_page', 0)
-    page_size = 3
-    start_idx = page * page_size
-    end_idx = start_idx + page_size
-    current_page_variations = variations[start_idx:end_idx]
+    print("variations", variations)
+    # 检查是否要生成所有variations的预览图（通过查询参数）
+    generate_all = request.args.get('all', 'false').lower() == 'true'
+    
+    if generate_all:
+        # 为所有variations生成预览图
+        variations_to_generate = variations
+    else:
+        # 只为当前页生成
+        page = generation_status.get('variation_page', 0)
+        page_size = 3
+        start_idx = page * page_size
+        end_idx = start_idx + page_size
+        variations_to_generate = variations[start_idx:end_idx]
 
     # 启动预览生成线程
-    thread = Thread(target=threaded_task, args=(conduct_variation_preview_generation, current_page_variations, generation_status,))
+    thread = Thread(target=threaded_task, args=(conduct_variation_preview_generation, variations_to_generate, generation_status,))
     thread.start()
 
-    return jsonify({'status': 'started', 'variations': current_page_variations})
+    return jsonify({'status': 'started', 'variations': variations_to_generate, 'total': len(variations_to_generate)})
 
 @app.route('/api/variations/next')
 def get_next_variations():
@@ -1140,5 +1278,5 @@ if __name__ == '__main__':
     # 自动寻找可用端口
     free_port = find_free_port()
     print(f"Starting server on port {free_port}")
-   
-    app.run(debug=True, host='0.0.0.0', port=5185, use_reloader=False)
+    # 启用热重载：当代码文件修改时自动重启服务器
+    app.run(debug=True, host='0.0.0.0', port=5185, use_reloader=True)

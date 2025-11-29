@@ -105,9 +105,13 @@ def take_screenshot(driver: webdriver.Chrome, html_path: str):
         required_width = int(svg_width + 500)
         required_height = int(svg_height + 500)
 
-        if required_width > 1920 or required_height > 1080:
-            driver.set_window_size(required_width, required_height)
-            time.sleep(0.3)
+        # 总是设置足够大的窗口尺寸，避免默认 800x600 导致截断
+        # 确保至少 1920x1080，如果 SVG 更大则使用 SVG 尺寸
+        target_width = max(required_width, 1920)
+        target_height = max(required_height, 1080)
+        
+        driver.set_window_size(target_width, target_height)
+        time.sleep(0.3)
 
         # 获取 SVG 位置和尺寸
         location = svg.location

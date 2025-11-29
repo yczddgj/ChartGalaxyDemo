@@ -39,6 +39,10 @@ function Workbench() {
   const [titleLoadingText, setTitleLoadingText] = useState('');
   const [pictogramLoading, setPictogramLoading] = useState(false);
   const [pictogramLoadingText, setPictogramLoadingText] = useState('');
+  const [chartTypesLoading, setChartTypesLoading] = useState(false);
+  const [chartTypesLoadingText, setChartTypesLoadingText] = useState('');
+  const [variationLoading, setVariationLoading] = useState(false);
+  const [variationLoadingText, setVariationLoadingText] = useState('');
   const [previewTimestamp, setPreviewTimestamp] = useState(Date.now());
   const [layoutNeedsFreshLoad, setLayoutNeedsFreshLoad] = useState(false);
 
@@ -559,8 +563,8 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
   };
 
   const fetchChartTypes = async () => {
-    setLoading(true);
-    setLoadingText('Loading chart types...');
+    setChartTypesLoading(true);
+    setChartTypesLoadingText('Recommending chart types...');
     try {
       // 先获取第一页，了解总数
       const firstRes = await axios.get('/api/chart_types');
@@ -569,7 +573,7 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
       
       // 如果总数大于第一页的数量，继续获取剩余页
       if (total > allChartTypes.length) {
-        setLoadingText(`Loading chart types... (${allChartTypes.length}/${total})`);
+        setChartTypesLoadingText(`Recommending chart types... (${allChartTypes.length}/${total})`);
         // 循环获取所有页，直到获取完所有数据
         let attempts = 0;
         const maxAttempts = Math.ceil(total / 3) + 2; // 防止无限循环
@@ -584,7 +588,7 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
             );
             if (newItems.length > 0) {
               allChartTypes = [...allChartTypes, ...newItems];
-              setLoadingText(`Loading chart types... (${allChartTypes.length}/${total})`);
+              setChartTypesLoadingText(`Recommending chart types... (${allChartTypes.length}/${total})`);
             } else {
               // 没有新数据了，可能已经获取完
               break;
@@ -596,25 +600,25 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
       }
       
       // 预先验证所有图片，过滤掉不存在的
-      setLoadingText('Validating chart type images...');
+      setChartTypesLoadingText('Validating chart type images...');
       const validatedTypes = await validateChartTypes(allChartTypes);
       
       // 合并使用相同图片的 chart types
-      setLoadingText('Merging chart types...');
+      setChartTypesLoadingText('Merging chart types...');
       const mergedTypes = mergeChartTypesByImage(validatedTypes);
       
       setTotalChartTypes(mergedTypes.length);
       setChartTypes(mergedTypes);
-      setLoading(false);
+      setChartTypesLoading(false);
     } catch (err) {
       console.error(err);
-      setLoading(false);
+      setChartTypesLoading(false);
     }
   };
 
   const loadMoreChartTypes = async (onSuccess) => {
-    setLoading(true);
-    setLoadingText('Loading more chart types...');
+    setChartTypesLoading(true);
+    setChartTypesLoadingText('Loading more chart types...');
     try {
         const res = await axios.get('/api/chart_types/next');
         if (res.data.chart_types && res.data.chart_types.length > 0) {
@@ -632,10 +636,10 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
             
             if (onSuccess) onSuccess();
         }
-        setLoading(false);
+        setChartTypesLoading(false);
     } catch (err) {
         console.error(err);
-        setLoading(false);
+        setChartTypesLoading(false);
     }
   };
 
@@ -686,51 +690,87 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
 
   // --- Logic: Variations ---
   const fetchVariations = async () => {
-    setLoading(true);
-    setLoadingText('Generating variation previews...');
+    setVariationLoading(true);
+    setVariationLoadingText('Loading variations...');
     try {
-      const res = await axios.get('/api/variations');
-      setTotalVariations(res.data.total);
-      // Trigger preview generation
-      await axios.get('/api/variations/generate_previews');
+      // 先获取第一页，了解总数
+      const firstRes = await axios.get('/api/variations');
+      const total = firstRes.data.total;
+      let allVariations = [...(firstRes.data.variations || [])];
+      
+      // 如果总数大于第一页的数量，继续获取剩余页
+      if (total > allVariations.length) {
+        setVariationLoadingText(`Loading variations... (${allVariations.length}/${total})`);
+        // 循环获取所有页，直到获取完所有数据
+        let attempts = 0;
+        const maxAttempts = Math.ceil(total / 3) + 2; // 防止无限循环
+        
+        while (allVariations.length < total && attempts < maxAttempts) {
+          attempts++;
+          const nextRes = await axios.get('/api/variations/next');
+          if (nextRes.data.variations && nextRes.data.variations.length > 0) {
+            // 避免重复添加
+            const newItems = nextRes.data.variations.filter(
+              item => !allVariations.some(existing => existing.name === item.name)
+            );
+            if (newItems.length > 0) {
+              allVariations = [...allVariations, ...newItems];
+              // setVariationLoadingText(`Loading variations... (${allVariations.length}/${total})`);
+            } else {
+              // 没有新数据了，可能已经获取完
+              break;
+            }
+          } else {
+            break; // 没有更多数据了
+          }
+        }
+      }
+      
+      // 过滤掉 'plain' variations (disabled)
+      const filtered = allVariations; // .filter(v => !v.name.toLowerCase().includes('plain'));
+      setTotalVariations(filtered.length);
+      
+      // Trigger preview generation for all variations
+      setVariationLoadingText(''); // Clear loading text since previews generate in background
+      // setVariationLoadingText('Generating variation previews...');
+      await axios.get('/api/variations/generate_previews?all=true');
       
       // Wait for completion before setting state
       pollStatus((statusData) => {
-          // Filter out 'plain' variations as per requirements
-          // Note: Backend now filters 'plain' too, but keeping this safe
-          const filtered = (res.data.variations || []).filter(v => !v.name.toLowerCase().includes('plain'));
           setVariations(filtered);
           setPreviewTimestamp(Date.now());
+          setVariationLoading(false);
       }, 'variation_preview');
     } catch (err) {
       console.error(err);
-      setLoading(false);
+      setVariationLoading(false);
     }
   };
 
   const loadMoreVariations = async (onSuccess) => {
-    setLoading(true);
-    setLoadingText('Loading more variations...');
+    setVariationLoading(true);
+    setVariationLoadingText('Loading more variations...');
     try {
         const res = await axios.get('/api/variations/next');
         if (res.data.variations && res.data.variations.length > 0) {
             await axios.get('/api/variations/generate_previews');
             pollStatus(() => {
                 setVariations(prev => {
-                    // Filter out 'plain' variations
-                    const validNewItems = res.data.variations.filter(v => !v.name.toLowerCase().includes('plain'));
+                    // Filter out 'plain' variations (disabled)
+                    const validNewItems = res.data.variations; // .filter(v => !v.name.toLowerCase().includes('plain'));
                     const newItems = validNewItems.filter(item => !prev.some(p => p.name === item.name));
                     return [...prev, ...newItems];
                 });
                 setPreviewTimestamp(Date.now());
+                setVariationLoading(false);
                 if (onSuccess) onSuccess();
             }, 'variation_preview');
         } else {
-            setLoading(false);
+            setVariationLoading(false);
         }
     } catch (err) {
         console.error(err);
-        setLoading(false);
+        setVariationLoading(false);
     }
   };
 
@@ -2371,78 +2411,96 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
             {selectedFile && (
               <div className="config-section">
                 <div className="section-title">推荐图表类型</div>
-                <div className="grid-container">
-                  {getPagedData(chartTypes, chartTypePage, CHART_TYPES_PER_PAGE).map(type => {
-                    // 检查是否选中（考虑合并类型的情况）
-                    const isSelected = type.mergedTypes 
-                      ? type.mergedTypes.includes(selectedChartType)
-                      : selectedChartType === type.type;
-                    
-                    return (
-                      <div 
-                        key={type.type} 
-                        className={`grid-item ${isSelected ? 'selected' : ''}`}
-                        onClick={() => handleChartTypeSelect(type)}
-                        title={type.mergedTypes ? `合并类型: ${type.mergedTypes.join(', ')}` : type.type}
-                        style={{ position: 'relative' }}
-                      >
-                        <img 
-                          src={type.image_url || `/static/chart_types/${type.type}.png`}
-                          alt={type.type}
-                        />
-                        {type.mergedTypes && type.mergedTypes.length > 1 && (
-                          <div className="merged-badge" style={{
-                            position: 'absolute',
-                            top: '4px',
-                            right: '4px',
-                            background: 'rgba(0, 0, 0, 0.6)',
-                            color: 'white',
-                            fontSize: '10px',
-                            padding: '2px 4px',
-                            borderRadius: '3px'
-                          }}>
-                            {type.mergedTypes.length}
+                {chartTypesLoading ? (
+                  <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', minHeight: '200px'}}>
+                    <div className="loading-spinner" style={{width: '40px', height: '40px', border: '3px solid var(--border-color)', borderTop: '3px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '16px'}}></div>
+                    <div style={{fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center'}}>{chartTypesLoadingText}</div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid-container">
+                      {getPagedData(chartTypes, chartTypePage, CHART_TYPES_PER_PAGE).map(type => {
+                        // 检查是否选中（考虑合并类型的情况）
+                        const isSelected = type.mergedTypes 
+                          ? type.mergedTypes.includes(selectedChartType)
+                          : selectedChartType === type.type;
+                        
+                        return (
+                          <div 
+                            key={type.type} 
+                            className={`grid-item ${isSelected ? 'selected' : ''}`}
+                            onClick={() => handleChartTypeSelect(type)}
+                            title={type.mergedTypes ? `合并类型: ${type.mergedTypes.join(', ')}` : type.type}
+                            style={{ position: 'relative' }}
+                          >
+                            <img 
+                              src={type.image_url || `/static/chart_types/${type.type}.png`}
+                              alt={type.type}
+                            />
+                            {type.mergedTypes && type.mergedTypes.length > 1 && (
+                              <div className="merged-badge" style={{
+                                position: 'absolute',
+                                top: '4px',
+                                right: '4px',
+                                background: 'rgba(0, 0, 0, 0.6)',
+                                color: 'white',
+                                fontSize: '10px',
+                                padding: '2px 4px',
+                                borderRadius: '3px'
+                              }}>
+                                {type.mergedTypes.length}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="pagination">
-                  <button disabled={chartTypePage === 0} onClick={() => setChartTypePage(p => p - 1)}>&lt;</button>
-                  <span>{chartTypePage + 1} / {Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) || 1}</span>
-                  <button disabled={chartTypePage >= Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) - 1} onClick={handleChartTypeNext}>&gt;</button>
-                </div>
+                        );
+                      })}
+                    </div>
+                    <div className="pagination">
+                      <button disabled={chartTypePage === 0} onClick={() => setChartTypePage(p => p - 1)}>&lt;</button>
+                      <span>{chartTypePage + 1} / {Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) || 1}</span>
+                      <button disabled={chartTypePage >= Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) - 1} onClick={handleChartTypeNext}>&gt;</button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
             {selectedChartType && (
               <div className="config-section">
                 <div className="section-title">推荐图表变体</div>
-                <div className="grid-container">
-                  {getPagedData(variations, variationPage, VARIATIONS_PER_PAGE).map(v => (
-                    <div 
-                      key={v.name} 
-                      className={`grid-item ${selectedVariation === v.name ? 'selected' : ''}`}
-                      onClick={() => handleVariationSelect(v.name)}
-                    >
-                      <img 
-                        src={`/currentfilepath/variation_${v.name}.png?t=${previewTimestamp}`}
-                        alt={v.name}
-                        onError={(e) => {
-                          e.target.onerror = null; 
-                          e.target.style.display = 'none';
-                          e.target.parentNode.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:10px;">${v.name}</div>`;
-                        }}
-                      />
+                {variationLoading ? (
+                  <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', minHeight: '200px'}}>
+                    <div className="loading-spinner" style={{width: '40px', height: '40px', border: '3px solid var(--border-color)', borderTop: '3px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '16px'}}></div>
+                    <div style={{fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center'}}>{variationLoadingText}</div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid-container">
+                      {getPagedData(variations, variationPage, VARIATIONS_PER_PAGE).map(v => (
+                        <div 
+                          key={v.name} 
+                          className={`grid-item ${selectedVariation === v.name ? 'selected' : ''}`}
+                          onClick={() => handleVariationSelect(v.name)}
+                        >
+                          <img 
+                            src={`/currentfilepath/variation_${v.name}.png?t=${previewTimestamp}`}
+                            alt={v.name}
+                            onError={(e) => {
+                              e.target.onerror = null; 
+                              e.target.style.display = 'none';
+                              e.target.parentNode.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:10px;">${v.name}</div>`;
+                            }}
+                          />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <div className="pagination">
-                  <button disabled={variationPage === 0} onClick={() => setVariationPage(p => p - 1)}>&lt;</button>
-                  <span>{variationPage + 1} / {Math.ceil(totalVariations / VARIATIONS_PER_PAGE) || 1}</span>
-                  <button disabled={variationPage >= Math.ceil(totalVariations / VARIATIONS_PER_PAGE) - 1} onClick={handleVariationNext}>&gt;</button>
-                </div>
+                    <div className="pagination">
+                      <button disabled={variationPage === 0} onClick={() => setVariationPage(p => p - 1)}>&lt;</button>
+                      <span>{variationPage + 1} / {Math.ceil(totalVariations / VARIATIONS_PER_PAGE) || 1}</span>
+                      <button disabled={variationPage >= Math.ceil(totalVariations / VARIATIONS_PER_PAGE) - 1} onClick={handleVariationNext}>&gt;</button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
