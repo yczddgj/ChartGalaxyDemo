@@ -495,13 +495,116 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
   };
 
   // --- Logic: Chart Types ---
+  // 检查图片是否存在
+  const checkImageExists = (url) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = url;
+      // 设置超时，避免长时间等待
+      setTimeout(() => resolve(false), 3000);
+    });
+  };
+
+  // 验证并过滤 chart types，只保留图片存在的
+  const validateChartTypes = async (chartTypes) => {
+    setLoadingText('Validating chart type images...');
+    const validatedTypes = [];
+    
+    for (const type of chartTypes) {
+      const imageUrl = type.image_url || `/static/chart_types/${type.type}.png`;
+      const exists = await checkImageExists(imageUrl);
+      if (exists) {
+        validatedTypes.push(type);
+      }
+    }
+    
+    return validatedTypes;
+  };
+
+  // 合并使用相同图片的 chart types
+  const mergeChartTypesByImage = (chartTypes) => {
+    const imageMap = {}; // image_url -> [chart types]
+    
+    // 按图片分组
+    for (const type of chartTypes) {
+      const imageUrl = type.image_url || `/static/chart_types/${type.type}.png`;
+      if (!imageMap[imageUrl]) {
+        imageMap[imageUrl] = [];
+      }
+      imageMap[imageUrl].push(type);
+    }
+    
+    // 合并相同图片的 chart types
+    const mergedTypes = [];
+    for (const [imageUrl, types] of Object.entries(imageMap)) {
+      if (types.length === 1) {
+        // 只有一个 chart type，直接添加
+        mergedTypes.push(types[0]);
+      } else {
+        // 多个 chart types 使用同一张图片，合并
+        // 使用第一个作为主要类型，但保留所有类型信息
+        const primaryType = types[0];
+        mergedTypes.push({
+          ...primaryType,
+          type: types.map(t => t.type).join(' / '), // 合并名称，用 " / " 分隔
+          mergedTypes: types.map(t => t.type), // 保存所有合并的类型名称
+          image_url: imageUrl
+        });
+      }
+    }
+    
+    return mergedTypes;
+  };
+
   const fetchChartTypes = async () => {
     setLoading(true);
     setLoadingText('Loading chart types...');
     try {
-      const res = await axios.get('/api/chart_types');
-      setTotalChartTypes(res.data.total);
-      setChartTypes(res.data.chart_types);
+      // 先获取第一页，了解总数
+      const firstRes = await axios.get('/api/chart_types');
+      const total = firstRes.data.total;
+      let allChartTypes = [...firstRes.data.chart_types];
+      
+      // 如果总数大于第一页的数量，继续获取剩余页
+      if (total > allChartTypes.length) {
+        setLoadingText(`Loading chart types... (${allChartTypes.length}/${total})`);
+        // 循环获取所有页，直到获取完所有数据
+        let attempts = 0;
+        const maxAttempts = Math.ceil(total / 3) + 2; // 防止无限循环
+        
+        while (allChartTypes.length < total && attempts < maxAttempts) {
+          attempts++;
+          const nextRes = await axios.get('/api/chart_types/next');
+          if (nextRes.data.chart_types && nextRes.data.chart_types.length > 0) {
+            // 避免重复添加
+            const newItems = nextRes.data.chart_types.filter(
+              item => !allChartTypes.some(existing => existing.type === item.type)
+            );
+            if (newItems.length > 0) {
+              allChartTypes = [...allChartTypes, ...newItems];
+              setLoadingText(`Loading chart types... (${allChartTypes.length}/${total})`);
+            } else {
+              // 没有新数据了，可能已经获取完
+              break;
+            }
+          } else {
+            break; // 没有更多数据了
+          }
+        }
+      }
+      
+      // 预先验证所有图片，过滤掉不存在的
+      setLoadingText('Validating chart type images...');
+      const validatedTypes = await validateChartTypes(allChartTypes);
+      
+      // 合并使用相同图片的 chart types
+      setLoadingText('Merging chart types...');
+      const mergedTypes = mergeChartTypesByImage(validatedTypes);
+      
+      setTotalChartTypes(mergedTypes.length);
+      setChartTypes(mergedTypes);
       setLoading(false);
     } catch (err) {
       console.error(err);
@@ -515,10 +618,18 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
     try {
         const res = await axios.get('/api/chart_types/next');
         if (res.data.chart_types && res.data.chart_types.length > 0) {
+            // 预先验证新加载的图片，过滤掉不存在的
+            const validatedNewItems = await validateChartTypes(res.data.chart_types);
+            
             setChartTypes(prev => {
-                const newItems = res.data.chart_types.filter(item => !prev.some(p => p.type === item.type));
-                return [...prev, ...newItems];
+                // 合并新数据和已有数据
+                const allTypes = [...prev, ...validatedNewItems];
+                // 重新合并所有类型（包括新加载的）
+                const mergedAll = mergeChartTypesByImage(allTypes);
+                setTotalChartTypes(mergedAll.length);
+                return mergedAll;
             });
+            
             if (onSuccess) onSuccess();
         }
         setLoading(false);
@@ -541,7 +652,8 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
       }
   };
 
-  const handleChartTypeSelect = async (type) => {
+
+  const handleChartTypeSelect = async (typeItem) => {
     // Reset downstream state
     setSelectedVariation('');
     setVariations([]);
@@ -558,11 +670,13 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
     setTitleOptions([]);
     setPictogramOptions([]);
 
-    setSelectedChartType(type);
+    // 如果这是合并的类型，使用第一个类型
+    const actualType = typeItem.mergedTypes ? typeItem.mergedTypes[0] : typeItem.type;
+    setSelectedChartType(actualType);
     setLoading(true);
     setLoadingText('Loading variations...');
     try {
-      await axios.get(`/api/chart_types/select/${type}`);
+      await axios.get(`/api/chart_types/select/${actualType}`);
       await fetchVariations();
     } catch (err) {
       console.error(err);
@@ -2258,23 +2372,41 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               <div className="config-section">
                 <div className="section-title">推荐图表类型</div>
                 <div className="grid-container">
-                  {getPagedData(chartTypes, chartTypePage, CHART_TYPES_PER_PAGE).map(type => (
-                    <div 
-                      key={type.type} 
-                      className={`grid-item ${selectedChartType === type.type ? 'selected' : ''}`}
-                      onClick={() => handleChartTypeSelect(type.type)}
-                    >
-                      <img 
-                        src={type.image_url || `/static/chart_types/${type.type}.png`}
-                        alt={type.type}
-                        onError={(e) => {
-                          e.target.onerror = null; 
-                          e.target.style.display = 'none';
-                          e.target.parentNode.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:10px;">${type.type}</div>`;
-                        }}
-                      />
-                    </div>
-                  ))}
+                  {getPagedData(chartTypes, chartTypePage, CHART_TYPES_PER_PAGE).map(type => {
+                    // 检查是否选中（考虑合并类型的情况）
+                    const isSelected = type.mergedTypes 
+                      ? type.mergedTypes.includes(selectedChartType)
+                      : selectedChartType === type.type;
+                    
+                    return (
+                      <div 
+                        key={type.type} 
+                        className={`grid-item ${isSelected ? 'selected' : ''}`}
+                        onClick={() => handleChartTypeSelect(type)}
+                        title={type.mergedTypes ? `合并类型: ${type.mergedTypes.join(', ')}` : type.type}
+                        style={{ position: 'relative' }}
+                      >
+                        <img 
+                          src={type.image_url || `/static/chart_types/${type.type}.png`}
+                          alt={type.type}
+                        />
+                        {type.mergedTypes && type.mergedTypes.length > 1 && (
+                          <div className="merged-badge" style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            background: 'rgba(0, 0, 0, 0.6)',
+                            color: 'white',
+                            fontSize: '10px',
+                            padding: '2px 4px',
+                            borderRadius: '3px'
+                          }}>
+                            {type.mergedTypes.length}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="pagination">
                   <button disabled={chartTypePage === 0} onClick={() => setChartTypePage(p => p - 1)}>&lt;</button>
