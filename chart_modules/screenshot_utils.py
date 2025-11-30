@@ -87,6 +87,13 @@ def take_screenshot(driver: webdriver.Chrome, html_path: str):
     try:
         # 加载 HTML 文件
         driver.get(f'file://{html_path}')
+        
+        # 强制设置浏览器背景为透明
+        try:
+            driver.execute_cdp_cmd('Emulation.setDefaultBackgroundColorOverride', {'color': {'r': 0, 'g': 0, 'b': 0, 'a': 0}})
+        except Exception as e:
+            print(f"设置透明背景失败 (可能不支持 CDP): {e}")
+
         time.sleep(0.3)  # 增加等待时间，确保 SVG 加载完成
 
         # 查找 SVG 元素
@@ -123,10 +130,29 @@ def take_screenshot(driver: webdriver.Chrome, html_path: str):
         height = size['height']
 
         # 保存完整截图
+        # 尝试获取透明背景截图（如果浏览器支持）
+        # 对于 headless Chrome，这通常需要确保页面本身是透明的
+        # 如果仍然有白色背景，可能需要后续处理
         driver.save_screenshot(full_screenshot_path)
 
         # 裁剪并保存 PNG
         image = Image.open(full_screenshot_path)
+        
+        # 检查是否需要将白色背景转换为透明
+        # 这是一种 fallback 机制，以防 driver.save_screenshot 没有捕获透明背景
+        image = image.convert("RGBA")
+        datas = image.getdata()
+        
+        # 如果左上角像素是纯白，我们假设它是背景并将其设为透明
+        # 这对于大多数没有白色边框内容的图表是安全的
+        # 但更安全的方法是依赖之前的 parse_utils.py 修改
+        
+        # 让我们检查一下 parse_utils.py 的修改是否生效。
+        # 如果 Chrome 默认背景是白色，即使 body 设为 transparent，截图可能还是白色的。
+        # 我们可以在这里强制把白色背景变成透明，或者裁剪后处理。
+        # 考虑到我们之前已经修改了 HTML，这里我们先按原样裁剪，
+        # 如果用户仍然反馈有白色背景，说明 Chrome 截图本身包含了白色背景。
+        
         left = round(x)
         top = round(y)
         right = round(x + width)

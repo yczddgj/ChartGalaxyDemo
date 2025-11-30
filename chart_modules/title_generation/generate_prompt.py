@@ -25,8 +25,8 @@ def get_prompt( title,
         print(f"Added style description to title prompt")
 
     client = OpenAI(
-        api_key="sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360",
-        base_url="https://aihubmix.com/v1"
+        api_key=config.OPENAI_API_KEY,
+        base_url=config.OPENAI_BASE_URL
     )
     response = client.chat.completions.create(
         model="gpt-4o-mini",

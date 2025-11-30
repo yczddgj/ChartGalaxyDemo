@@ -53,30 +53,30 @@ function Workbench() {
     colorScheme: 'default',
     textSize: 'medium',
     textStyle: 'normal',
-    prompt: `You are an expert infographic designer. You are given a chart/data visualization image.
-Your task is to transform this chart into a beautiful, professional infographic with the following requirements:
+    prompt: `You are an expert Infographic Designer and Data Visualization Specialist.
 
-**Content Requirements:**
-- **DO NOT modify the data, numbers, labels, or any information** shown in the chart
-- Keep all chart values, axes, legends, and data points exactly as they appear
-- Preserve the chart type and structure
+I am providing two images:
+1. **Original Image (Source Content):** A chart containing the specific data, numbers, and structure that must be preserved.
+2. **Reference Image (Target Style):** A design sample showing the exact aesthetic, color palette, and visual style I want to apply.
 
-**Visual Enhancement:**
-- Add a professional, eye-catching design with modern aesthetics
-- Use a harmonious color palette that enhances readability
-- Add appropriate decorative elements, icons, or illustrations
-- Create a clean, well-organized layout
-- Use professional typography for titles and labels
-- Add subtle backgrounds or patterns if appropriate
-- Ensure visual consistency throughout the design
+**Your Task:**
+Redesign the **Original Image** by strictly applying the visual style of the **Reference Image**.
 
-**Quality Standards:**
-- High resolution and clarity
-- No blurry text or distorted elements
-- Professional and polished appearance
-- Suitable for presentation or publication
+**Strict Requirements:**
 
-Generate a stunning infographic that transforms the raw chart into a visually appealing, professional design while keeping all the data intact.`
+1. **Content Integrity (DO NOT CHANGE):**
+   - Keep all data values, numbers, axis labels, legends, and titles EXACTLY as they appear in the Original Image.
+   - Do not summarize or alter the text.
+   - Maintain the fundamental chart structure (e.g., if the original is a grouped bar chart, keep it a grouped bar chart).
+
+2. **Style Transfer (APPLY FROM REFERENCE):**
+   - **Color Palette:** Extract and use the exact hex codes/colors from the Reference Image for backgrounds, data bars/lines, and text.
+   - **Typography:** Match the font style (serif/sans-serif), weight (bold/light), and hierarchy used in the Reference Image.
+   - **Visual Elements:** Replicate the specific design details such as corner radius (rounded vs sharp), border styles, shadow effects, grid line styles, and background patterns.
+   - **Vibe:** Ensure the final output looks like it belongs to the same brand identity or report series as the Reference Image.
+
+**Output:**
+Generate a high-fidelity design that combines the *data* of the Original Image with the *look and feel* of the Reference Image.`
   });
   
   // --- State: Refine ---
@@ -2344,9 +2344,73 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
       document.body.removeChild(link);
   };
   
-  const handleImageClick = (image) => {
-      setSelectedRefinedImage(image);
+  const handleImageClick = async (image) => {
+    // If clicking the same image, just open zoom modal
+    if (selectedRefinedImage && selectedRefinedImage.url === image.url) {
       setShowRefinedModal(true);
+      return;
+    }
+
+    setSelectedRefinedImage(image);
+    
+    // Save current canvas state before loading refined image if we haven't already saved it for this switch
+    if (canvas && !historyRef.current.savedBeforeRefine) {
+        const currentState = JSON.stringify(canvas.toJSON());
+        // Save to a special slot or just ensure it's in history
+        historyRef.current.savedStateBeforeRefine = currentState;
+    }
+
+    if (canvas) {
+        // Clear canvas and load the refined image as a background or main image
+        canvas.clear();
+        canvas.setBackgroundColor(bgColor, canvas.renderAll.bind(canvas));
+        
+        fabric.Image.fromURL(image.url, (img) => {
+            if (!img) return;
+            
+            // Scale image to fit canvas while maintaining aspect ratio
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+            const imgRatio = img.width / img.height;
+            const canvasRatio = canvasWidth / canvasHeight;
+            
+            let scale = 1;
+            if (imgRatio > canvasRatio) {
+                scale = (canvasWidth * 0.9) / img.width;
+            } else {
+                scale = (canvasHeight * 0.9) / img.height;
+            }
+            
+            img.set({
+                scaleX: scale,
+                scaleY: scale,
+                left: canvasWidth / 2,
+                top: canvasHeight / 2,
+                originX: 'center',
+                originY: 'center',
+                selectable: true
+            });
+            
+            canvas.add(img);
+            canvas.setActiveObject(img);
+            canvas.renderAll();
+            
+            // Add to history so user can undo/switch back
+            const newState = JSON.stringify(canvas.toJSON());
+            setHistory(prev => [...prev, newState]);
+            setHistoryIndex(prev => prev + 1);
+        }, { crossOrigin: 'anonymous' });
+    }
+  };
+
+  // Restore to previous edit state (before viewing refined image)
+  const restoreEditState = () => {
+      if (canvas && historyRef.current.savedStateBeforeRefine) {
+          canvas.loadFromJSON(historyRef.current.savedStateBeforeRefine, () => {
+              canvas.renderAll();
+              setSelectedRefinedImage(null);
+          });
+      }
   };
 
   // --- Pagination Helpers ---
@@ -2471,7 +2535,7 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
                 {variationLoading ? (
                   <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', minHeight: '200px'}}>
                     <div className="loading-spinner" style={{width: '40px', height: '40px', border: '3px solid var(--border-color)', borderTop: '3px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '16px'}}></div>
-                    <div style={{fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center'}}>{variationLoadingText}</div>
+                    {variationLoadingText && <div style={{fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center'}}>{variationLoadingText}</div>}
                   </div>
                 ) : (
                   <>
@@ -2771,7 +2835,25 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
             </div>
 
             <div className="config-section">
-              <div className="section-title">精修历史</div>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+                <div className="section-title" style={{margin: 0}}>精修历史</div>
+                {selectedRefinedImage && (
+                    <button 
+                        onClick={restoreEditState}
+                        style={{
+                            fontSize: '0.8rem',
+                            padding: '4px 8px',
+                            background: '#f3f4f6',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            color: '#4b5563'
+                        }}
+                    >
+                        展示原始结果
+                    </button>
+                )}
+              </div>
               {refinedImages.length > 0 ? (
                 <div className="refined-gallery-grid">
                   {refinedImages.map((image, index) => (

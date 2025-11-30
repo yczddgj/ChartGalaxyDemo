@@ -29,7 +29,17 @@ TEST_TITLE_IMAGE = str(Path(__file__).parent / "test_images" / "test_title.png")
 TEST_PICTOGRAM_IMAGE = str(Path(__file__).parent / "test_images" / "test_pictogram.png")
 # =====================================
 
-API_KEY = "sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360"
+import sys
+import os
+from pathlib import Path
+
+# Add project root to sys.path to allow importing config
+project_root = Path(__file__).resolve().parents[3]
+sys.path.append(str(project_root))
+
+import config
+
+API_KEY = config.OPENAI_API_KEY
 BASE_URL = "https://aihubmix.com/v1"
 
 class InfographicImageGenerator:

@@ -16,10 +16,11 @@ import tempfile
 import shutil
 from chart_modules.parse_utils import convert_svg_to_html
 from chart_modules.screenshot_utils import get_driver, take_screenshot
+import config
 
 # API 配置
-API_KEY = "sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360"
-BASE_URL = "https://aihubmix.com/v1"
+API_KEY = config.OPENAI_API_KEY
+BASE_URL = config.OPENAI_BASE_URL
 
 # 素材缓存配置
 MATERIAL_CACHE_DIR = "buffer/material_cache"
@@ -421,30 +422,31 @@ def refine_with_gemini(reference_image_path: str, current_image_path: str, outpu
         )
 
         # 构建提示词
-        prompt = """You are an expert infographic designer. You are given a chart/data visualization image.
-Your task is to transform this chart into a beautiful, professional infographic with the following requirements:
+        prompt = """You are an expert Infographic Designer and Data Visualization Specialist.
 
-**Content Requirements:**
-- **DO NOT modify the data, numbers, labels, or any information** shown in the chart
-- Keep all chart values, axes, legends, and data points exactly as they appear
-- Preserve the chart type and structure
+I am providing two images:
+1. **Original Image (Source Content):** A chart containing the specific data, numbers, and structure that must be preserved.
+2. **Reference Image (Target Style):** A design sample showing the exact aesthetic, color palette, and visual style I want to apply.
 
-**Visual Enhancement:**
-- Add a professional, eye-catching design with modern aesthetics
-- Use a harmonious color palette that enhances readability
-- Add appropriate decorative elements, icons, or illustrations
-- Create a clean, well-organized layout
-- Use professional typography for titles and labels
-- Add subtle backgrounds or patterns if appropriate
-- Ensure visual consistency throughout the design
+**Your Task:**
+Redesign the **Original Image** by strictly applying the visual style of the **Reference Image**.
 
-**Quality Standards:**
-- High resolution and clarity
-- No blurry text or distorted elements
-- Professional and polished appearance
-- Suitable for presentation or publication
+**Strict Requirements:**
 
-Generate a stunning infographic that transforms the raw chart into a visually appealing, professional design while keeping all the data intact."""
+1. **Content Integrity (DO NOT CHANGE):**
+   - Keep all data values, numbers, axis labels, legends, and titles EXACTLY as they appear in the Original Image.
+   - Do not summarize or alter the text.
+   - Maintain the fundamental chart structure (e.g., if the original is a grouped bar chart, keep it a grouped bar chart).
+
+2. **Style Transfer (APPLY FROM REFERENCE):**
+   - **Color Palette:** Extract and use the exact hex codes/colors from the Reference Image for backgrounds, data bars/lines, and text.
+   - **Typography:** Match the font style (serif/sans-serif), weight (bold/light), and hierarchy used in the Reference Image.
+   - **Visual Elements:** Replicate the specific design details such as corner radius (rounded vs sharp), border styles, shadow effects, grid line styles, and background patterns.
+   - **Vibe:** Ensure the final output looks like it belongs to the same brand identity or report series as the Reference Image.
+
+**Output:**
+Generate a high-fidelity design that combines the *data* of the Original Image with the *look and feel* of the Reference Image."""
+
         # 调用 Gemini 模型
         response = client.chat.completions.create(
             model="gemini-3-pro-image-preview",
@@ -463,10 +465,18 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
                             }
                         },
                         {
+                            "type": "text",
+                            "text": "This is the Reference Image (Target Style)."
+                        },
+                        {
                             "type": "image_url",
                             "image_url": {
                                 "url": current_b64
                             }
+                        },
+                        {
+                            "type": "text",
+                            "text": "This is the Original Image (Source Content)."
                         }
                     ]
                 }

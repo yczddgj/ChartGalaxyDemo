@@ -107,6 +107,16 @@ def convert_svg_to_html(svg_path: str, html_path: str):
     <head>
         <meta charset="UTF-8" />
         <title>Infographic Chart</title>
+        <style>
+            body {{
+                background: transparent;
+                margin: 0;
+                padding: 0;
+            }}
+            #chart-container {{
+                background: transparent;
+            }}
+        </style>
     </head>
     <body>
         <div id="chart-container">

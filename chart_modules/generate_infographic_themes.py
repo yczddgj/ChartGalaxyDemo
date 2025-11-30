@@ -10,8 +10,18 @@ from pathlib import Path
 from typing import Dict, List
 import time
 
-API_KEY = "sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360"
-BASE_URL = "https://aihubmix.com/v1"
+import sys
+import os
+from pathlib import Path
+
+# Add project root to sys.path to allow importing config
+project_root = Path(__file__).resolve().parents[1]
+sys.path.append(str(project_root))
+
+import config
+
+API_KEY = config.OPENAI_API_KEY
+BASE_URL = config.OPENAI_BASE_URL
 
 def encode_image(image_path):
     """将图片编码为 base64"""
