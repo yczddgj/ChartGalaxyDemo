@@ -1,6 +1,15 @@
 from openai import OpenAI
 import json
 from enum import Enum
+import sys
+import os
+
+# Add project root to sys.path to import config
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+sys.path.append(project_root)
+
+import config
 
 class TextClass(Enum):
     ONLY_TITLE = 1
@@ -25,8 +34,8 @@ def text_classifier(text):
 
 def split_title_and_annotation( text_to_split, prompt_path = 'prompts\split_prompt.md'):
     client = OpenAI(
-        api_key="sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360",
-        base_url="https://aihubmix.com/v1"
+        api_key=config.OPENAI_API_KEY,
+        base_url=config.OPENAI_BASE_URL
     )
     
     with open(prompt_path, 'r', encoding='utf-8') as file:

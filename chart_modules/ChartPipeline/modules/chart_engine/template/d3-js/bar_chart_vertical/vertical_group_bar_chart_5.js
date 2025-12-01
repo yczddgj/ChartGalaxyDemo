@@ -187,7 +187,7 @@ function makeChart(containerSelector, data) {
     const dataMin = d3.min(useData, d => +d[yField]) ;
     // 向上取整到最接近的合适的刻度
     let yMax;
-    yMax = Math.ceil(dataMax * 1.2 / 10) * 10; // 向上取整到最接近的10的倍数
+    yMax = Math.ceil(dataMax * 1.1 / 10) * 10; // 向上取整到最接近的10的倍数
     let yMin;
     if (dataMin < 0) {
         yMin = Math.floor(dataMin * 1.2 / 10) * 10; // 向下取整到最接近的10的倍数
@@ -380,7 +380,7 @@ function makeChart(containerSelector, data) {
     // 创建图例并居中放置
     const legend = svg.append("g")
         .attr("class", "legend")
-        .attr("transform", `translate(${(width - totalLegendWidth + legendPadding + 40) / 2}, 80)`);
+        .attr("transform", `translate(${(width - totalLegendWidth + legendPadding + 40) / 2}, 140)`);
     
     // 为每个组添加一个图例项，水平排列
     let legendOffset = 0;

@@ -1,6 +1,15 @@
 # 1. 扫描当前目录下所有image文件 包含png jpg jpeg webp，进行编号 存储下list
 import os, json
 import uuid  # 添加导入uuid模块
+import sys
+
+# Add project root to sys.path to import config
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
+sys.path.append(project_root)
+
+import config
+
 image_pathes = []
 root = '/data/lizhen/resources/image'
 image_root = os.path.join(root, 'images')
@@ -50,8 +59,8 @@ from concurrent.futures import ThreadPoolExecutor
 import threading
 
 client = OpenAI(
-    api_key="sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360",
-    base_url="https://aihubmix.com/v1"
+    api_key=config.OPENAI_API_KEY,
+    base_url=config.OPENAI_BASE_URL
 )
 
 def resize_image(img, max_size=512):
@@ -95,9 +104,9 @@ def ask_image(prompt, image_data):
     while number_of_trials < 5:
         try:
             response = requests.post(
-                "https://aihubmix.com/v1/chat/completions",
+                f"{config.OPENAI_BASE_URL}/chat/completions",
                 headers={
-                    "Authorization": "Bearer sk-HGwzhul85auxqDzz6eF39b9eD47347F7A454Ad9e8f1f380d",
+                    "Authorization": f"Bearer {config.OPENAI_API_KEY}",
                     "Content-Type": "application/json"
                 },
                 json={

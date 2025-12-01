@@ -1,4 +1,16 @@
 import requests
+import sys
+import os
+from io import BytesIO
+from PIL import Image
+import numpy as np
+
+# Add project root to sys.path to import config
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+sys.path.append(project_root)
+
+import config
 from generate_prompt import get_prompt
 from crop_image import crop
 from check_image import check
@@ -9,6 +21,47 @@ import os
 # 获取当前文件所在目录的绝对路径
 _current_dir = os.path.dirname(os.path.abspath(__file__))
 
+def remove_background(image_path, tolerance=30):
+    """
+    Removes the background from an image by detecting the most common color (likely background)
+    and making it transparent.
+    
+    Args:
+        image_path (str): Path to the image file.
+        tolerance (int): Tolerance for color matching (0-255).
+    
+    Returns:
+        str: Path to the image with background removed.
+    """
+    try:
+        img = Image.open(image_path).convert("RGBA")
+        data = np.array(img)
+        
+        # Find the most frequent color (assuming it's the background)
+        # Only consider the RGB channels for frequency analysis
+        rgb_data = data[:, :, :3]
+        colors, counts = np.unique(rgb_data.reshape(-1, 3), axis=0, return_counts=True)
+        bg_color = colors[counts.argmax()]
+        
+        print(f"Detected background color: {bg_color}")
+
+        # Create a mask for pixels that match the background color within tolerance
+        mask = np.all(np.abs(data[:, :, :3] - bg_color) <= tolerance, axis=2)
+        
+        # Set alpha channel to 0 for matching pixels
+        data[mask, 3] = 0
+        
+        # Create new image from modified data
+        new_img = Image.fromarray(data)
+        
+        # Save the processed image
+        new_img.save(image_path, "PNG")
+        print(f"Background removed from: {image_path}")
+        return image_path
+    except Exception as e:
+        print(f"Error removing background: {e}")
+        return image_path
+
 def get_image(  bg_hex,
                 prompt_path = None,
                 save_path = 'images/title/generated_image.png',
@@ -17,77 +70,63 @@ def get_image(  bg_hex,
     if prompt_path is None:
         prompt_path = os.path.join(_current_dir, 'prompts/generated_output.md')
     client = OpenAI(
-        api_key="sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360",
-        base_url="https://aihubmix.com/v1"
+        api_key=config.OPENAI_API_KEY,
+        base_url=config.OPENAI_BASE_URL
     )
     with open(prompt_path, 'r', encoding='utf-8') as file:
         image_prompt = file.read()
+    print("image_prompt: ", image_prompt)
 
-    result = client.images.generate(
-        model="gpt-image-1",
-        prompt=image_prompt,
-        n=1, # 单次出图数量，最多 10 张
-        size="1536x1024", # 1024x1024 (square), 1536x1024 (3:2 landscape), 1024x1536 (2:3 portrait), auto (default) 
-        quality="low", # high, medium, low, auto (default)
-        moderation="low", # low, auto (default) 需要升级 openai 包 📍
-        background="transparent", # transparent, opaque, auto (default)
-    )
-    # 遍历所有返回的图片数据
-    for i, image_data in enumerate(result.data):
-        image_base64 = image_data.b64_json
-        if image_base64: # 确保 b64_json 不为空
-            image_bytes = base64.b64decode(image_base64)
-            # --- 文件名冲突处理逻辑开始 ---
-            # current_index = i
-            # while True:
-                # # 构建带自增序号的文件名
-                # file_name = f"{current_index}.png"
-                # file_path = os.path.join(output_dir, file_name) # 构建完整文件路径
+    try:
+        # 使用 chat completion 接口调用 Gemini 3.0 Pro
+        response = client.chat.completions.create(
+            model="gemini-3-pro-image-preview",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": image_prompt
+                        }
+                    ]
+                }
+            ],
+            modalities=["text", "image"],
+            max_tokens=8192,
+            temperature=0.7
+        )
+        
+        image_saved = False
+        if (
+            hasattr(response.choices[0].message, "multi_mod_content")
+            and response.choices[0].message.multi_mod_content is not None
+        ):
+            for part in response.choices[0].message.multi_mod_content:
+                if "inline_data" in part and part["inline_data"] is not None:
+                    print("[Image content received]")
+                    image_base64 = part["inline_data"]["data"]
+                    if image_base64:
+                        image_bytes = base64.b64decode(image_base64)
+                        with open(save_path, "wb") as f:
+                            f.write(image_bytes)
+                        print(f"图片已保存至：{save_path}")
+                        
+                        # Remove background immediately after saving
+                        remove_background(save_path)
+                        
+                        image_saved = True
+                        break # 只保存第一张图片
+        
+        if not image_saved:
+            print("未在响应中找到图片数据。")
+            
+    except Exception as e:
+        print(f"Error generating image with Gemini: {e}")
+        import traceback
+        traceback.print_exc()
 
-                # # 检查文件是否存在
-                # if not os.path.exists(file_path):
-                #     break # 文件名不冲突，跳出循环
-
-                # # 文件名冲突，增加序号
-                # current_index += 1
-
-            # # 使用找到的唯一 file_path 保存图片到文件
-            # with open(file_path, "wb") as f:
-            #     f.write(image_bytes)
-            with open(save_path, "wb") as f:
-                f.write(image_bytes)
-            print(f"图片已保存至：{save_path}")
-        else:
-            print(f"第 {i} 张图片数据为空，跳过保存。")
     return save_path
-    # payload = { "image_request": {
-    #         "prompt": image_prompt,
-    #         #"aspect_ratio": "ASPECT_16_9",
-    #         "model": "V_2",
-    #         "magic_prompt_option": "AUTO",
-    #         "style_type": "DESIGN",
-    #         "resolution": res,
-    #         "color_palette":{
-    #             "members":[
-    #                 {
-    #                 "color_hex": bg_hex,
-    #                 "color_weight": 1
-    #                 }
-    #             ]
-    #         }
-    #     } }
-    # headers = {
-    #     "Api-Key": api_key,
-    #     "Content-Type": "application/json"
-    # }
-    # response = requests.post(url, json=payload, headers=headers)
-    # data = response.json()
-    # image_url = data['data'][0]['url']
-    # response_image = requests.get(image_url)
-    # if response_image.status_code == 200:
-    #     with open(save_path, 'wb') as file:
-    #         file.write(response_image.content)
-    # return response
 
 def get_title(title,
             bg_hex,
@@ -114,14 +153,14 @@ def get_title(title,
             save_path_list.append(save_path_file)
             image_response = get_image(bg_hex=bg_hex, res=image_res, save_path=save_path_file)
             print("image_response: ", image_response)
-            succ = 1
+            # succ = 1
             # crop(image_path=save_path)
-            # check_result, check_response = check(title, image_path=save_path)
-            # print("check_response: ", check_response)
-            # print("check_result: ", check_result)
+            check_result, check_response = check(title, image_path=save_path_file)
+            print("check_response: ", check_response)
+            print("check_result: ", check_result)
 
-            # if check_result == "Yes":
-            #     succ = 1
-            #     break
+            if check_result == "Yes":
+                succ = 1
+                break
             # break
     return succ, save_path_list

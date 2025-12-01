@@ -6,17 +6,21 @@ import os
 import base64
 import openai
 from pathlib import Path
-import cairosvg
 from PIL import Image
 from io import BytesIO
 import numpy as np
 import json
 import hashlib
 from datetime import datetime
+import tempfile
+import shutil
+from chart_modules.parse_utils import convert_svg_to_html
+from chart_modules.screenshot_utils import get_driver, take_screenshot
+import config
 
 # API 配置
-API_KEY = "sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360"
-BASE_URL = "https://aihubmix.com/v1"
+API_KEY = config.OPENAI_API_KEY
+BASE_URL = config.OPENAI_BASE_URL
 
 # 素材缓存配置
 MATERIAL_CACHE_DIR = "buffer/material_cache"
@@ -198,33 +202,80 @@ def check_material_cache(materials: dict) -> dict:
 def svg_to_png(svg_content: str, output_path: str, background_color: str = None) -> bool:
     """
     将 SVG 内容转换为 PNG 文件
+    使用 SVG -> HTML -> Screenshot 的方式
 
     Args:
         svg_content: SVG 文件内容（字符串）
         output_path: 输出 PNG 文件路径
-        background_color: 背景颜色（hex 格式），None 表示透明背景
+        background_color: 背景颜色（hex 格式），None 表示透明背景（暂未使用，保留接口兼容性）
 
     Returns:
         bool: 转换是否成功
     """
+    driver = None
+    temp_dir = None
     try:
         # 确保输出目录存在
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        output_dir = os.path.dirname(output_path)
+        if output_dir:  # 如果路径包含目录
+            os.makedirs(output_dir, exist_ok=True)
+        else:  # 如果只是文件名，使用当前目录
+            output_path = os.path.abspath(output_path)
 
-        # 使用 cairosvg 将 SVG 转换为 PNG
-        # 如果 background_color 为 None，则使用透明背景
-        cairosvg.svg2png(
-            bytestring=svg_content.encode('utf-8'),
-            write_to=output_path,
-            background_color=background_color  # None = transparent
-        )
+        # 创建临时文件（使用绝对路径）
+        temp_dir = tempfile.mkdtemp()
+        temp_svg_path = os.path.abspath(os.path.join(temp_dir, 'temp.svg'))
+        temp_html_path = os.path.abspath(os.path.join(temp_dir, 'temp.html'))
 
-        print(f"SVG 转 PNG 成功: {output_path}")
-        return True
+        # 1. 将 SVG 内容保存到临时文件
+        with open(temp_svg_path, 'w', encoding='utf-8') as f:
+            f.write(svg_content)
+
+        # 2. 将 SVG 转换为 HTML
+        convert_svg_to_html(temp_svg_path, temp_html_path)
+
+        # 3. 使用 screenshot 将 HTML 转换为 PNG
+        driver = get_driver()
+        take_screenshot(driver, temp_html_path)
+
+        # 4. 移动生成的 PNG 到目标路径
+        temp_png_path = os.path.join(temp_dir, 'temp.png')
+        if not os.path.exists(temp_png_path):
+            # 尝试使用 replace 方式
+            temp_png_path = temp_html_path.replace('.html', '.png')
+        
+        if os.path.exists(temp_png_path):
+            # 确保目标路径是绝对路径
+            output_path = os.path.abspath(output_path)
+            shutil.move(temp_png_path, output_path)
+            print(f"SVG 转 PNG 成功: {output_path}")
+            return True
+        else:
+            print(f"SVG 转 PNG 失败: 未找到生成的 PNG 文件，期望路径: {temp_png_path}")
+            # 列出临时目录中的文件以便调试
+            if temp_dir and os.path.exists(temp_dir):
+                files = os.listdir(temp_dir)
+                print(f"临时目录中的文件: {files}")
+            return False
 
     except Exception as e:
         print(f"SVG 转 PNG 失败: {e}")
+        import traceback
+        traceback.print_exc()
         return False
+    finally:
+        # 清理 driver
+        if driver:
+            try:
+                driver.quit()
+            except Exception as e:
+                print(f"清理 driver 时出错: {e}")
+        # 清理临时文件
+        if temp_dir and os.path.exists(temp_dir):
+            try:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            except Exception as e:
+                print(f"清理临时文件时出错: {e}")
 
 
 def auto_crop_image(image_path: str, background_color: str = '#ffffff', padding: int = 50) -> str:
@@ -371,30 +422,31 @@ def refine_with_gemini(reference_image_path: str, current_image_path: str, outpu
         )
 
         # 构建提示词
-        prompt = """You are an expert infographic designer. You are given a chart/data visualization image.
-Your task is to transform this chart into a beautiful, professional infographic with the following requirements:
+        prompt = """You are an expert Infographic Designer and Data Visualization Specialist.
 
-**Content Requirements:**
-- **DO NOT modify the data, numbers, labels, or any information** shown in the chart
-- Keep all chart values, axes, legends, and data points exactly as they appear
-- Preserve the chart type and structure
+I am providing two images:
+1. **Original Image (Source Content):** A chart containing the specific data, numbers, and structure that must be preserved.
+2. **Reference Image (Target Style):** A design sample showing the exact aesthetic, color palette, and visual style I want to apply.
 
-**Visual Enhancement:**
-- Add a professional, eye-catching design with modern aesthetics
-- Use a harmonious color palette that enhances readability
-- Add appropriate decorative elements, icons, or illustrations
-- Create a clean, well-organized layout
-- Use professional typography for titles and labels
-- Add subtle backgrounds or patterns if appropriate
-- Ensure visual consistency throughout the design
+**Your Task:**
+Redesign the **Original Image** by strictly applying the visual style of the **Reference Image**.
 
-**Quality Standards:**
-- High resolution and clarity
-- No blurry text or distorted elements
-- Professional and polished appearance
-- Suitable for presentation or publication
+**Strict Requirements:**
 
-Generate a stunning infographic that transforms the raw chart into a visually appealing, professional design while keeping all the data intact."""
+1. **Content Integrity (DO NOT CHANGE):**
+   - Keep all data values, numbers, axis labels, legends, and titles EXACTLY as they appear in the Original Image.
+   - Do not summarize or alter the text.
+   - Maintain the fundamental chart structure (e.g., if the original is a grouped bar chart, keep it a grouped bar chart).
+
+2. **Style Transfer (APPLY FROM REFERENCE):**
+   - **Color Palette:** Extract and use the exact hex codes/colors from the Reference Image for backgrounds, data bars/lines, and text.
+   - **Typography:** Match the font style (serif/sans-serif), weight (bold/light), and hierarchy used in the Reference Image.
+   - **Visual Elements:** Replicate the specific design details such as corner radius (rounded vs sharp), border styles, shadow effects, grid line styles, and background patterns.
+   - **Vibe:** Ensure the final output looks like it belongs to the same brand identity or report series as the Reference Image.
+
+**Output:**
+Generate a high-fidelity design that combines the *data* of the Original Image with the *look and feel* of the Reference Image."""
+
         # 调用 Gemini 模型
         response = client.chat.completions.create(
             model="gemini-3-pro-image-preview",
@@ -413,10 +465,18 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
                             }
                         },
                         {
+                            "type": "text",
+                            "text": "This is the Reference Image (Target Style)."
+                        },
+                        {
                             "type": "image_url",
                             "image_url": {
                                 "url": current_b64
                             }
+                        },
+                        {
+                            "type": "text",
+                            "text": "This is the Original Image (Source Content)."
                         }
                     ]
                 }

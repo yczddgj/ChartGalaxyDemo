@@ -12,8 +12,18 @@ from io import BytesIO
 import openai
 from pathlib import Path
 
-API_KEY = "sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360"
-BASE_URL = "https://aihubmix.com/v1"
+import sys
+import os
+from pathlib import Path
+
+# Add project root to sys.path to allow importing config
+project_root = Path(__file__).resolve().parents[1]
+sys.path.append(str(project_root))
+
+import config
+
+API_KEY = config.OPENAI_API_KEY
+BASE_URL = config.OPENAI_BASE_URL
 
 # 描述缓存文件路径
 DESCRIPTION_CACHE_FILE = "infographics/reference_descriptions.json"

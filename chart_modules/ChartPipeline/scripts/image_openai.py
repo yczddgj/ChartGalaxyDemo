@@ -1,15 +1,15 @@
-import os
-from openai import OpenAI
-from PIL import Image
-from io import BytesIO
-import base64
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import api_key, base_url
+import os
+from pathlib import Path
 
-# OpenAI API configuration
-API_KEY = api_key
-API_PROVIDER = base_url
+# Add project root to sys.path to allow importing config
+project_root = Path(__file__).resolve().parents[3]
+sys.path.append(str(project_root))
+
+import config
+
+API_KEY = config.OPENAI_API_KEY
+API_PROVIDER = config.OPENAI_BASE_URL
 
 client = OpenAI(
     api_key=API_KEY,
@@ -22,7 +22,7 @@ import base64
 import os
 
 client = OpenAI(
-    api_key=API_KEY, # 换成你在后台生成的 Key "sk-***"
+    api_key=API_KEY,
     base_url=API_PROVIDER
 )
 

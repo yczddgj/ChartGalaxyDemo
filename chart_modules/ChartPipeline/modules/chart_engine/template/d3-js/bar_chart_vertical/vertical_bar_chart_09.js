@@ -219,17 +219,40 @@ function makeChart(containerSelector, data) {
         // 计算单个图片的尺寸
         const imgWidth = barWidth;
         const imgHeight = imgWidth / imgAspectRatio;
+        const effectiveHeight = imgHeight * 0.353; // 每次堆叠的有效增量高度
+
+        // 计算理论上需要的精确数量（不取整）
+        const numImagesExact = barHeight / effectiveHeight;
+        const numImages = Math.ceil(numImagesExact);
         
-        // 计算需要叠加的图片数量
-        const numImages = Math.ceil(barHeight / imgHeight)/0.353;
+        // 创建 clipPath 的 ID
+        const clipId = `clip-${Math.random().toString(36).substr(2, 9)}`;
         
-        // 创建图片叠加
+        // 定义裁剪路径：只保留柱子实际高度范围内的内容
+        // 注意：裁剪矩形的 y 坐标从 chartHeight - barHeight 开始，高度为 barHeight
+        d3.select(this).append("clipPath")
+            .attr("id", clipId)
+            .append("rect")
+            .attr("x", 0)
+            .attr("y", chartHeight - barHeight) // 裁剪区域顶部
+            .attr("width", barWidth)
+            .attr("height", barHeight); // 裁剪区域高度
+
+        // 创建一个组来应用裁剪路径
+        const stackGroup = d3.select(this).append("g")
+            .attr("clip-path", `url(#${clipId})`);
+
+        // 在组内创建图片叠加
         for (let i = 0; i < numImages; i++) {
-            d3.select(this)
-                .append("image")
+            stackGroup.append("image")
                 .attr("xlink:href", imageBase64)
                 .attr("x", 0)
-                .attr("y", chartHeight-imgHeight*0.7 - (i + 1) * imgHeight*0.353)
+                // 图片从底部向上堆叠
+                // 第一个图片(i=0)底部对齐y=chartHeight
+                // 后续图片依次向上偏移 effectiveHeight
+                // 注意：image y属性是指图片左上角，所以需要减去 imgHeight
+                // 为了让底部对齐，还需要微调起始位置
+                .attr("y", chartHeight - imgHeight - (i * effectiveHeight) + (imgHeight - effectiveHeight)) 
                 .attr("width", imgWidth)
                 .attr("height", imgHeight);
         }
@@ -242,15 +265,8 @@ function makeChart(containerSelector, data) {
         .attr("class", "label")
         .attr("x", d => xScale(d.category) + xScale.bandwidth() / 2)
         .attr("y", d => {
-            // 计算图片堆叠的实际高度
-            const barHeight = chartHeight - yScale(d.value);
-            const imgWidth = xScale.bandwidth();
-            const imgHeight = imgWidth / imgAspectRatio;
-            const numImages = Math.ceil(barHeight / imgHeight) / 0.353;
-            const stackHeight = numImages * imgHeight * 0.353;
-            
-            // 确保标签位于图片堆叠的顶部上方
-            return chartHeight - stackHeight - imgHeight-10;
+            // 标签位于实际数值高度的上方
+            return yScale(d.value) - 10;
         })
         .attr("text-anchor", "middle")
         .style("font-family", typography.label.font_family)

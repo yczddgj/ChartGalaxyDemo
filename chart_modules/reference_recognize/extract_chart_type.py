@@ -22,8 +22,18 @@ import difflib
 sys.path.append(Path(__file__).parent)
 print(f"extract Python路径: {sys.path}")
 
-API_KEY = "sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360"
-BASE_URL = "https://aihubmix.com/v1"
+import sys
+import os
+from pathlib import Path
+
+# Add project root to sys.path to allow importing config
+project_root = Path(__file__).resolve().parents[2]
+sys.path.append(str(project_root))
+
+import config
+
+API_KEY = config.OPENAI_API_KEY
+BASE_URL = config.OPENAI_BASE_URL
 
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:

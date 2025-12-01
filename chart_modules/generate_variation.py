@@ -36,7 +36,7 @@ padding = 50
 between_padding = 35
 
 
-import cairosvg
+from chart_modules.style_refinement import svg_to_png
 
 def make_infographic(data: Dict, chart_svg_content: str, output_dir: str, bg_color) -> str:
     bg_color = rgb_to_hex(bg_color)
@@ -58,8 +58,12 @@ def make_infographic(data: Dict, chart_svg_content: str, output_dir: str, bg_col
         png_path = output_dir.replace('.svg', '.png')
         try:
             print(f"Converting to PNG: {png_path}")
-            cairosvg.svg2png(bytestring=chart_svg_content.encode('utf-8'), write_to=png_path)
-            print(f"Converted to PNG: {png_path}")
+            # 使用新的 SVG -> HTML -> Screenshot 方法
+            success = svg_to_png(chart_svg_content, png_path, background_color=None)
+            if success:
+                print(f"Converted to PNG: {png_path}")
+            else:
+                print(f"Error converting to PNG: conversion failed")
         except Exception as e:
             print(f"Error converting to PNG: {e}")
             

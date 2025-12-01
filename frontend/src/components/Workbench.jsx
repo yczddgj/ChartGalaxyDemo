@@ -35,6 +35,16 @@ function Workbench() {
   const [canvas, setCanvas] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
+  const [titleLoading, setTitleLoading] = useState(false);
+  const [titleLoadingText, setTitleLoadingText] = useState('');
+  const [pictogramLoading, setPictogramLoading] = useState(false);
+  const [pictogramLoadingText, setPictogramLoadingText] = useState('');
+  const [chartTypesLoading, setChartTypesLoading] = useState(false);
+  const [chartTypesLoadingText, setChartTypesLoadingText] = useState('');
+  const [variationLoading, setVariationLoading] = useState(false);
+  const [variationLoadingText, setVariationLoadingText] = useState('');
+  const [referenceProcessing, setReferenceProcessing] = useState(false);
+  const [referenceProcessingText, setReferenceProcessingText] = useState('');
   const [previewTimestamp, setPreviewTimestamp] = useState(Date.now());
   const [layoutNeedsFreshLoad, setLayoutNeedsFreshLoad] = useState(false);
 
@@ -45,30 +55,30 @@ function Workbench() {
     colorScheme: 'default',
     textSize: 'medium',
     textStyle: 'normal',
-    prompt: `You are an expert infographic designer. You are given a chart/data visualization image.
-Your task is to transform this chart into a beautiful, professional infographic with the following requirements:
+    prompt: `You are an expert Infographic Designer and Data Visualization Specialist.
 
-**Content Requirements:**
-- **DO NOT modify the data, numbers, labels, or any information** shown in the chart
-- Keep all chart values, axes, legends, and data points exactly as they appear
-- Preserve the chart type and structure
+I am providing two images:
+1. **Original Image (Source Content):** A chart containing the specific data, numbers, and structure that must be preserved.
+2. **Reference Image (Target Style):** A design sample showing the exact aesthetic, color palette, and visual style I want to apply.
 
-**Visual Enhancement:**
-- Add a professional, eye-catching design with modern aesthetics
-- Use a harmonious color palette that enhances readability
-- Add appropriate decorative elements, icons, or illustrations
-- Create a clean, well-organized layout
-- Use professional typography for titles and labels
-- Add subtle backgrounds or patterns if appropriate
-- Ensure visual consistency throughout the design
+**Your Task:**
+Redesign the **Original Image** by strictly applying the visual style of the **Reference Image**.
 
-**Quality Standards:**
-- High resolution and clarity
-- No blurry text or distorted elements
-- Professional and polished appearance
-- Suitable for presentation or publication
+**Strict Requirements:**
 
-Generate a stunning infographic that transforms the raw chart into a visually appealing, professional design while keeping all the data intact.`
+1. **Content Integrity (DO NOT CHANGE):**
+   - Keep all data values, numbers, axis labels, legends, and titles EXACTLY as they appear in the Original Image.
+   - Do not summarize or alter the text.
+   - Maintain the fundamental chart structure (e.g., if the original is a grouped bar chart, keep it a grouped bar chart).
+
+2. **Style Transfer (APPLY FROM REFERENCE):**
+   - **Color Palette:** Extract and use the exact hex codes/colors from the Reference Image for backgrounds, data bars/lines, and text.
+   - **Typography:** Match the font style (serif/sans-serif), weight (bold/light), and hierarchy used in the Reference Image.
+   - **Visual Elements:** Replicate the specific design details such as corner radius (rounded vs sharp), border styles, shadow effects, grid line styles, and background patterns.
+   - **Vibe:** Ensure the final output looks like it belongs to the same brand identity or report series as the Reference Image.
+
+**Output:**
+Generate a high-fidelity design that combines the *data* of the Original Image with the *look and feel* of the Reference Image.`
   });
   
   // --- State: Refine ---
@@ -192,10 +202,34 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
 
     // Initialize Canvas
     const container = document.querySelector('.canvas-wrapper');
-    const computedWidth = container ? container.clientWidth - 80 : 800;
-    const computedHeight = container ? container.clientHeight - 80 : 600;
-    const canvasWidth = Math.max(computedWidth, CANVAS_MIN_WIDTH);
-    const canvasHeight = Math.max(computedHeight, CANVAS_MIN_HEIGHT);
+    if (!container) {
+      console.warn('Canvas wrapper not found, retrying...');
+      setTimeout(() => {
+        const retryContainer = document.querySelector('.canvas-wrapper');
+        if (retryContainer) {
+          const computedWidth = retryContainer.clientWidth - 80;
+          const computedHeight = retryContainer.clientHeight - 80;
+          const canvasWidth = Math.max(computedWidth, CANVAS_MIN_WIDTH);
+          const canvasHeight = Math.max(computedHeight, CANVAS_MIN_HEIGHT);
+          const c = new fabric.Canvas('workbenchCanvas', {
+            width: canvasWidth,
+            height: canvasHeight,
+            backgroundColor: '#ffffff',
+            selection: true,
+            preserveObjectStacking: true
+          });
+          c.setViewportTransform([1, 0, 0, 1, 0, 0]);
+          setCanvas(c);
+        }
+      }, 100);
+      return;
+    }
+    const computedWidth = container.clientWidth - 80;
+    const computedHeight = container.clientHeight - 80;
+    // Use container size, but ensure minimum size for usability
+    // If container is smaller than minimum, use container size to avoid overflow
+    const canvasWidth = computedWidth >= CANVAS_MIN_WIDTH ? computedWidth : Math.max(computedWidth, 800);
+    const canvasHeight = computedHeight >= CANVAS_MIN_HEIGHT ? computedHeight : Math.max(computedHeight, 600);
     
     const initialBgColor = '#ffffff';
     const c = new fabric.Canvas('workbenchCanvas', {
@@ -336,8 +370,10 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
         if (container && c) {
             const computedWidth = container.clientWidth - 80;
             const computedHeight = container.clientHeight - 80;
-            const newWidth = Math.max(computedWidth, CANVAS_MIN_WIDTH);
-            const newHeight = Math.max(computedHeight, CANVAS_MIN_HEIGHT);
+            // Use container size, but ensure minimum size for usability
+            // If container is smaller than minimum, use container size to avoid overflow
+            const newWidth = computedWidth >= CANVAS_MIN_WIDTH ? computedWidth : Math.max(computedWidth, 800);
+            const newHeight = computedHeight >= CANVAS_MIN_HEIGHT ? computedHeight : Math.max(computedHeight, 600);
             c.setWidth(newWidth);
             c.setHeight(newHeight);
             c.renderAll();
@@ -529,8 +565,8 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
   };
 
   const fetchChartTypes = async () => {
-    setLoading(true);
-    setLoadingText('Loading chart types...');
+    setChartTypesLoading(true);
+    setChartTypesLoadingText('Recommending chart types...');
     try {
       // 先获取第一页，了解总数
       const firstRes = await axios.get('/api/chart_types');
@@ -539,7 +575,7 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
       
       // 如果总数大于第一页的数量，继续获取剩余页
       if (total > allChartTypes.length) {
-        setLoadingText(`Loading chart types... (${allChartTypes.length}/${total})`);
+        setChartTypesLoadingText(`Recommending chart types... (${allChartTypes.length}/${total})`);
         // 循环获取所有页，直到获取完所有数据
         let attempts = 0;
         const maxAttempts = Math.ceil(total / 3) + 2; // 防止无限循环
@@ -554,7 +590,7 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
             );
             if (newItems.length > 0) {
               allChartTypes = [...allChartTypes, ...newItems];
-              setLoadingText(`Loading chart types... (${allChartTypes.length}/${total})`);
+              setChartTypesLoadingText(`Recommending chart types... (${allChartTypes.length}/${total})`);
             } else {
               // 没有新数据了，可能已经获取完
               break;
@@ -566,60 +602,25 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
       }
       
       // 预先验证所有图片，过滤掉不存在的
-      setLoadingText('Validating chart type images...');
+      setChartTypesLoadingText('Validating chart type images...');
       const validatedTypes = await validateChartTypes(allChartTypes);
       
       // 合并使用相同图片的 chart types
-      setLoadingText('Merging chart types...');
+      setChartTypesLoadingText('Merging chart types...');
       const mergedTypes = mergeChartTypesByImage(validatedTypes);
       
-      // 检查每个 chart type 是否有对应的 variations
-      setLoadingText('Checking variations for chart types...');
-      const typesWithVariations = [];
-      for (const type of mergedTypes) {
-        const actualType = type.mergedTypes ? type.mergedTypes[0] : type.type;
-        try {
-          // 临时选择这个 chart type 来检查是否有 variations
-          await axios.get(`/api/chart_types/select/${actualType}`);
-          const variationsRes = await axios.get('/api/variations');
-          const variationCount = variationsRes.data.total || 0;
-          
-          console.log('[DEBUG] Chart type variation check:', {
-            chartType: actualType,
-            variationCount: variationCount,
-            hasVariations: variationCount > 0
-          });
-          
-          if (variationCount > 0) {
-            typesWithVariations.push(type);
-          } else {
-            console.warn('[DEBUG] Chart type has no variations, filtering out:', actualType);
-          }
-        } catch (err) {
-          console.error('[DEBUG] Error checking variations for chart type:', actualType, err);
-          // 如果检查失败，仍然保留这个 chart type（可能是网络问题）
-          typesWithVariations.push(type);
-        }
-      }
-      
-      console.log('[DEBUG] Final chart types with variations:', {
-        originalCount: mergedTypes.length,
-        filteredCount: typesWithVariations.length,
-        filtered: typesWithVariations.map(t => t.type)
-      });
-      
-      setTotalChartTypes(typesWithVariations.length);
-      setChartTypes(typesWithVariations);
-      setLoading(false);
+      setTotalChartTypes(mergedTypes.length);
+      setChartTypes(mergedTypes);
+      setChartTypesLoading(false);
     } catch (err) {
       console.error(err);
-      setLoading(false);
+      setChartTypesLoading(false);
     }
   };
 
   const loadMoreChartTypes = async (onSuccess) => {
-    setLoading(true);
-    setLoadingText('Loading more chart types...');
+    setChartTypesLoading(true);
+    setChartTypesLoadingText('Loading more chart types...');
     try {
         const res = await axios.get('/api/chart_types/next');
         if (res.data.chart_types && res.data.chart_types.length > 0) {
@@ -637,10 +638,10 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
             
             if (onSuccess) onSuccess();
         }
-        setLoading(false);
+        setChartTypesLoading(false);
     } catch (err) {
         console.error(err);
-        setLoading(false);
+        setChartTypesLoading(false);
     }
   };
 
@@ -704,77 +705,87 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
 
   // --- Logic: Variations ---
   const fetchVariations = async () => {
-    setLoading(true);
-    setLoadingText('Generating variation previews...');
+    setVariationLoading(true);
+    setVariationLoadingText('Loading variations...');
     try {
-      const res = await axios.get('/api/variations');
-      console.log('[DEBUG] fetchVariations response:', {
-        total: res.data.total,
-        variationsCount: res.data.variations?.length || 0,
-        variations: res.data.variations,
-        selectedChartType: selectedChartType
-      });
+      // 先获取第一页，了解总数
+      const firstRes = await axios.get('/api/variations');
+      const total = firstRes.data.total;
+      let allVariations = [...(firstRes.data.variations || [])];
       
-      setTotalVariations(res.data.total);
-      
-      // 检查是否有 variations
-      if (!res.data.variations || res.data.variations.length === 0) {
-        console.warn('[DEBUG] No variations found for chart type:', selectedChartType);
-        setVariations([]);
-        setLoading(false);
-        return;
+      // 如果总数大于第一页的数量，继续获取剩余页
+      if (total > allVariations.length) {
+        setVariationLoadingText(`Loading variations... (${allVariations.length}/${total})`);
+        // 循环获取所有页，直到获取完所有数据
+        let attempts = 0;
+        const maxAttempts = Math.ceil(total / 3) + 2; // 防止无限循环
+        
+        while (allVariations.length < total && attempts < maxAttempts) {
+          attempts++;
+          const nextRes = await axios.get('/api/variations/next');
+          if (nextRes.data.variations && nextRes.data.variations.length > 0) {
+            // 避免重复添加
+            const newItems = nextRes.data.variations.filter(
+              item => !allVariations.some(existing => existing.name === item.name)
+            );
+            if (newItems.length > 0) {
+              allVariations = [...allVariations, ...newItems];
+              // setVariationLoadingText(`Loading variations... (${allVariations.length}/${total})`);
+            } else {
+              // 没有新数据了，可能已经获取完
+              break;
+            }
+          } else {
+            break; // 没有更多数据了
+          }
+        }
       }
       
-      // Trigger preview generation
-      await axios.get('/api/variations/generate_previews');
+      // 过滤掉 'plain' variations (disabled)
+      const filtered = allVariations; // .filter(v => !v.name.toLowerCase().includes('plain'));
+      setTotalVariations(filtered.length);
+      
+      // Trigger preview generation for all variations
+      setVariationLoadingText(''); // Clear loading text since previews generate in background
+      // setVariationLoadingText('Generating variation previews...');
+      await axios.get('/api/variations/generate_previews?all=true');
       
       // Wait for completion before setting state
       pollStatus((statusData) => {
-          // Filter out 'plain' variations as per requirements
-          // Note: Backend now filters 'plain' too, but keeping this safe
-          const filtered = (res.data.variations || []).filter(v => !v.name.toLowerCase().includes('plain'));
-          console.log('[DEBUG] Filtered variations:', {
-            originalCount: res.data.variations?.length || 0,
-            filteredCount: filtered.length,
-            filtered: filtered.map(v => v.name)
-          });
-          
-          if (filtered.length === 0) {
-            console.warn('[DEBUG] No variations after filtering for chart type:', selectedChartType);
-          }
-          
           setVariations(filtered);
           setPreviewTimestamp(Date.now());
+          setVariationLoading(false);
       }, 'variation_preview');
     } catch (err) {
-      console.error('[DEBUG] Error fetching variations:', err);
-      setLoading(false);
+      console.error(err);
+      setVariationLoading(false);
     }
   };
 
   const loadMoreVariations = async (onSuccess) => {
-    setLoading(true);
-    setLoadingText('Loading more variations...');
+    setVariationLoading(true);
+    setVariationLoadingText('Loading more variations...');
     try {
         const res = await axios.get('/api/variations/next');
         if (res.data.variations && res.data.variations.length > 0) {
             await axios.get('/api/variations/generate_previews');
             pollStatus(() => {
                 setVariations(prev => {
-                    // Filter out 'plain' variations
-                    const validNewItems = res.data.variations.filter(v => !v.name.toLowerCase().includes('plain'));
+                    // Filter out 'plain' variations (disabled)
+                    const validNewItems = res.data.variations; // .filter(v => !v.name.toLowerCase().includes('plain'));
                     const newItems = validNewItems.filter(item => !prev.some(p => p.name === item.name));
                     return [...prev, ...newItems];
                 });
                 setPreviewTimestamp(Date.now());
+                setVariationLoading(false);
                 if (onSuccess) onSuccess();
             }, 'variation_preview');
         } else {
-            setLoading(false);
+            setVariationLoading(false);
         }
     } catch (err) {
         console.error(err);
-        setLoading(false);
+        setVariationLoading(false);
     }
   };
 
@@ -833,20 +844,21 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
     setLayoutNeedsFreshLoad(true);
 
     setSelectedReference(refName);
-    setLoading(true);
-    setLoadingText('Extracting style & Generating assets...');
+    setReferenceProcessing(true);
+    setReferenceProcessingText('Extracting style...');
     try {
       const dataName = selectedFile.replace('.csv', '');
       // 1. Extract Layout/Style
       await axios.get(`/api/start_layout_extraction/${refName}/${dataName}`);
       
       pollStatus(async () => {
+          setReferenceProcessing(false);
           // 2. Generate Title
           await generateTitle();
       }, 'layout_extraction', false);
     } catch (err) {
       console.error(err);
-      setLoading(false);
+      setReferenceProcessing(false);
     }
   };
 
@@ -888,8 +900,8 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
   };
 
   const generateTitle = async () => {
-      setLoading(true);
-      setLoadingText('Generating title...');
+      setTitleLoading(true);
+      setTitleLoadingText('Generating title...');
       try {
           await axios.get(`/api/start_title_generation/${selectedFile}`);
           pollStatus(async (statusData) => {
@@ -907,18 +919,19 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               const titleText = statusData.title_options && statusData.title_options[newTitleImage] 
                                 ? statusData.title_options[newTitleImage].title_text 
                                 : (statusData.selected_title || 'InfoGraphic');
-                                
+              
+              setTitleLoading(false);
               await generatePictogram(titleText, newTitleImage);
           }, 'title_generation', false);
       } catch (err) {
           console.error(err);
-          setLoading(false);
+          setTitleLoading(false);
       }
   };
 
   const regenerateTitle = async () => {
-      setLoading(true);
-      setLoadingText('Regenerating title...');
+      setTitleLoading(true);
+      setTitleLoadingText('Regenerating title...');
       try {
           await axios.get(`/api/regenerate_title/${selectedFile}`);
           pollStatus(async (statusData) => {
@@ -927,17 +940,17 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               setTitleOptions(options);
               setTitleImage(options[0]);
               setPreviewTimestamp(Date.now()); // Force refresh images
-              setLoading(false);
+              setTitleLoading(false);
           }, 'title_generation');
       } catch (err) {
           console.error(err);
-          setLoading(false);
+          setTitleLoading(false);
       }
   };
 
   const generatePictogram = async (titleText, currentTitleImage = null) => {
-      setLoading(true);
-      setLoadingText('Generating pictogram...');
+      setPictogramLoading(true);
+      setPictogramLoadingText('Generating pictogram...');
       try {
           // If titleText is not provided (e.g. manual regeneration), try to get it or use default
           const text = titleText || 'InfoGraphic'; 
@@ -970,7 +983,7 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               setSelectedPictograms(newPictograms);
               
               setPreviewTimestamp(Date.now()); // Force refresh images
-              setLoading(false);
+              setPictogramLoading(false);
               
               // Force update canvas with new assets
               // Use the passed title image if available (since state update might be pending)
@@ -987,13 +1000,13 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
           }, 'pictogram_generation', true);
       } catch (err) {
           console.error(err);
-          setLoading(false);
+          setPictogramLoading(false);
       }
   };
 
   const regeneratePictogram = async () => {
-      setLoading(true);
-      setLoadingText('Regenerating pictogram...');
+      setPictogramLoading(true);
+      setPictogramLoadingText('Regenerating pictogram...');
       try {
           const text = 'InfoGraphic'; 
           await axios.get(`/api/regenerate_pictogram/${encodeURIComponent(text)}`);
@@ -1015,11 +1028,11 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               setPictogramOptions(options);
               setSelectedPictograms([options[0]]);
               setPreviewTimestamp(Date.now()); // Force refresh images
-              setLoading(false);
+              setPictogramLoading(false);
           }, 'pictogram_generation');
       } catch (err) {
           console.error(err);
-          setLoading(false);
+          setPictogramLoading(false);
       }
   };
 
@@ -2347,9 +2360,73 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
       document.body.removeChild(link);
   };
   
-  const handleImageClick = (image) => {
-      setSelectedRefinedImage(image);
+  const handleImageClick = async (image) => {
+    // If clicking the same image, just open zoom modal
+    if (selectedRefinedImage && selectedRefinedImage.url === image.url) {
       setShowRefinedModal(true);
+      return;
+    }
+
+    setSelectedRefinedImage(image);
+    
+    // Save current canvas state before loading refined image if we haven't already saved it for this switch
+    if (canvas && !historyRef.current.savedBeforeRefine) {
+        const currentState = JSON.stringify(canvas.toJSON());
+        // Save to a special slot or just ensure it's in history
+        historyRef.current.savedStateBeforeRefine = currentState;
+    }
+
+    if (canvas) {
+        // Clear canvas and load the refined image as a background or main image
+        canvas.clear();
+        canvas.setBackgroundColor(bgColor, canvas.renderAll.bind(canvas));
+        
+        fabric.Image.fromURL(image.url, (img) => {
+            if (!img) return;
+            
+            // Scale image to fit canvas while maintaining aspect ratio
+            const canvasWidth = canvas.width;
+            const canvasHeight = canvas.height;
+            const imgRatio = img.width / img.height;
+            const canvasRatio = canvasWidth / canvasHeight;
+            
+            let scale = 1;
+            if (imgRatio > canvasRatio) {
+                scale = (canvasWidth * 0.9) / img.width;
+            } else {
+                scale = (canvasHeight * 0.9) / img.height;
+            }
+            
+            img.set({
+                scaleX: scale,
+                scaleY: scale,
+                left: canvasWidth / 2,
+                top: canvasHeight / 2,
+                originX: 'center',
+                originY: 'center',
+                selectable: true
+            });
+            
+            canvas.add(img);
+            canvas.setActiveObject(img);
+            canvas.renderAll();
+            
+            // Add to history so user can undo/switch back
+            const newState = JSON.stringify(canvas.toJSON());
+            setHistory(prev => [...prev, newState]);
+            setHistoryIndex(prev => prev + 1);
+        }, { crossOrigin: 'anonymous' });
+    }
+  };
+
+  // Restore to previous edit state (before viewing refined image)
+  const restoreEditState = () => {
+      if (canvas && historyRef.current.savedStateBeforeRefine) {
+          canvas.loadFromJSON(historyRef.current.savedStateBeforeRefine, () => {
+              canvas.renderAll();
+              setSelectedRefinedImage(null);
+          });
+      }
   };
 
   // --- Pagination Helpers ---
@@ -2414,78 +2491,96 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
             {selectedFile && (
               <div className="config-section">
                 <div className="section-title">推荐图表类型</div>
-                <div className="grid-container">
-                  {getPagedData(chartTypes, chartTypePage, CHART_TYPES_PER_PAGE).map(type => {
-                    // 检查是否选中（考虑合并类型的情况）
-                    const isSelected = type.mergedTypes 
-                      ? type.mergedTypes.includes(selectedChartType)
-                      : selectedChartType === type.type;
-                    
-                    return (
-                      <div 
-                        key={type.type} 
-                        className={`grid-item ${isSelected ? 'selected' : ''}`}
-                        onClick={() => handleChartTypeSelect(type)}
-                        title={type.mergedTypes ? `合并类型: ${type.mergedTypes.join(', ')}` : type.type}
-                        style={{ position: 'relative' }}
-                      >
-                        <img 
-                          src={type.image_url || `/static/chart_types/${type.type}.png`}
-                          alt={type.type}
-                        />
-                        {type.mergedTypes && type.mergedTypes.length > 1 && (
-                          <div className="merged-badge" style={{
-                            position: 'absolute',
-                            top: '4px',
-                            right: '4px',
-                            background: 'rgba(0, 0, 0, 0.6)',
-                            color: 'white',
-                            fontSize: '10px',
-                            padding: '2px 4px',
-                            borderRadius: '3px'
-                          }}>
-                            {type.mergedTypes.length}
+                {chartTypesLoading ? (
+                  <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', minHeight: '200px'}}>
+                    <div className="loading-spinner" style={{width: '40px', height: '40px', border: '3px solid var(--border-color)', borderTop: '3px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '16px'}}></div>
+                    <div style={{fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center'}}>{chartTypesLoadingText}</div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid-container">
+                      {getPagedData(chartTypes, chartTypePage, CHART_TYPES_PER_PAGE).map(type => {
+                        // 检查是否选中（考虑合并类型的情况）
+                        const isSelected = type.mergedTypes 
+                          ? type.mergedTypes.includes(selectedChartType)
+                          : selectedChartType === type.type;
+                        
+                        return (
+                          <div 
+                            key={type.type} 
+                            className={`grid-item ${isSelected ? 'selected' : ''}`}
+                            onClick={() => handleChartTypeSelect(type)}
+                            title={type.mergedTypes ? `合并类型: ${type.mergedTypes.join(', ')}` : type.type}
+                            style={{ position: 'relative' }}
+                          >
+                            <img 
+                              src={type.image_url || `/static/chart_types/${type.type}.png`}
+                              alt={type.type}
+                            />
+                            {type.mergedTypes && type.mergedTypes.length > 1 && (
+                              <div className="merged-badge" style={{
+                                position: 'absolute',
+                                top: '4px',
+                                right: '4px',
+                                background: 'rgba(0, 0, 0, 0.6)',
+                                color: 'white',
+                                fontSize: '10px',
+                                padding: '2px 4px',
+                                borderRadius: '3px'
+                              }}>
+                                {type.mergedTypes.length}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="pagination">
-                  <button disabled={chartTypePage === 0} onClick={() => setChartTypePage(p => p - 1)}>&lt;</button>
-                  <span>{chartTypePage + 1} / {Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) || 1}</span>
-                  <button disabled={chartTypePage >= Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) - 1} onClick={handleChartTypeNext}>&gt;</button>
-                </div>
+                        );
+                      })}
+                    </div>
+                    <div className="pagination">
+                      <button disabled={chartTypePage === 0} onClick={() => setChartTypePage(p => p - 1)}>&lt;</button>
+                      <span>{chartTypePage + 1} / {Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) || 1}</span>
+                      <button disabled={chartTypePage >= Math.ceil(totalChartTypes / CHART_TYPES_PER_PAGE) - 1} onClick={handleChartTypeNext}>&gt;</button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
             {selectedChartType && (
               <div className="config-section">
                 <div className="section-title">推荐图表变体</div>
-                <div className="grid-container">
-                  {getPagedData(variations, variationPage, VARIATIONS_PER_PAGE).map(v => (
-                    <div 
-                      key={v.name} 
-                      className={`grid-item ${selectedVariation === v.name ? 'selected' : ''}`}
-                      onClick={() => handleVariationSelect(v.name)}
-                    >
-                      <img 
-                        src={`/currentfilepath/variation_${v.name}.png?t=${previewTimestamp}`}
-                        alt={v.name}
-                        onError={(e) => {
-                          e.target.onerror = null; 
-                          e.target.style.display = 'none';
-                          e.target.parentNode.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:10px;">${v.name}</div>`;
-                        }}
-                      />
+                {variationLoading ? (
+                  <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', minHeight: '200px'}}>
+                    <div className="loading-spinner" style={{width: '40px', height: '40px', border: '3px solid var(--border-color)', borderTop: '3px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '16px'}}></div>
+                    {variationLoadingText && <div style={{fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center'}}>{variationLoadingText}</div>}
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid-container">
+                      {getPagedData(variations, variationPage, VARIATIONS_PER_PAGE).map(v => (
+                        <div 
+                          key={v.name} 
+                          className={`grid-item ${selectedVariation === v.name ? 'selected' : ''}`}
+                          onClick={() => handleVariationSelect(v.name)}
+                        >
+                          <img 
+                            src={`/currentfilepath/variation_${v.name}.png?t=${previewTimestamp}`}
+                            alt={v.name}
+                            onError={(e) => {
+                              e.target.onerror = null; 
+                              e.target.style.display = 'none';
+                              e.target.parentNode.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;color:#999;font-size:10px;">${v.name}</div>`;
+                            }}
+                          />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                <div className="pagination">
-                  <button disabled={variationPage === 0} onClick={() => setVariationPage(p => p - 1)}>&lt;</button>
-                  <span>{variationPage + 1} / {Math.ceil(totalVariations / VARIATIONS_PER_PAGE) || 1}</span>
-                  <button disabled={variationPage >= Math.ceil(totalVariations / VARIATIONS_PER_PAGE) - 1} onClick={handleVariationNext}>&gt;</button>
-                </div>
+                    <div className="pagination">
+                      <button disabled={variationPage === 0} onClick={() => setVariationPage(p => p - 1)}>&lt;</button>
+                      <span>{variationPage + 1} / {Math.ceil(totalVariations / VARIATIONS_PER_PAGE) || 1}</span>
+                      <button disabled={variationPage >= Math.ceil(totalVariations / VARIATIONS_PER_PAGE) - 1} onClick={handleVariationNext}>&gt;</button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -2532,6 +2627,13 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
                     />
                   </div>
                 )}
+
+                {referenceProcessing && (
+                  <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', marginTop: '15px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1'}}>
+                    <div className="loading-spinner" style={{width: '32px', height: '32px', border: '3px solid var(--border-color)', borderTop: '3px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '10px'}}></div>
+                    <div style={{fontSize: '0.875rem', color: 'var(--text-secondary)', textAlign: 'center'}}>{referenceProcessingText}</div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2539,7 +2641,18 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
               <div className="config-section">
                 <div className="section-title">元素生成结果</div>
 
-                {titleOptions.length > 0 ? (
+                {titleLoading ? (
+                  <div className="asset-group" style={{marginBottom: '15px', position: 'relative'}}>
+                    <div className="asset-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                      <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>标题</label>
+                      <button disabled style={{fontSize: '0.875rem', padding: '2px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'not-allowed', opacity: 0.6}}>重新生成</button>
+                    </div>
+                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', minHeight: '120px'}}>
+                      <div className="loading-spinner" style={{width: '32px', height: '32px', border: '3px solid var(--border-color)', borderTop: '3px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '12px'}}></div>
+                      <div style={{fontSize: '0.875rem', color: 'var(--text-secondary)', textAlign: 'center'}}>{titleLoadingText}</div>
+                    </div>
+                  </div>
+                ) : titleOptions.length > 0 ? (
                   <div className="asset-group" style={{marginBottom: '15px'}}>
                     <div className="asset-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
                       <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>标题</label>
@@ -2584,7 +2697,18 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
                   )
                 )}
 
-                {pictogramOptions.length > 0 ? (
+                {pictogramLoading ? (
+                  <div className="asset-group" style={{position: 'relative'}}>
+                    <div className="asset-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                      <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>图像（可多选）</label>
+                      <button disabled style={{fontSize: '0.875rem', padding: '2px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'not-allowed', opacity: 0.6}}>重新生成</button>
+                    </div>
+                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', minHeight: '120px'}}>
+                      <div className="loading-spinner" style={{width: '32px', height: '32px', border: '3px solid var(--border-color)', borderTop: '3px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '12px'}}></div>
+                      <div style={{fontSize: '0.875rem', color: 'var(--text-secondary)', textAlign: 'center'}}>{pictogramLoadingText}</div>
+                    </div>
+                  </div>
+                ) : pictogramOptions.length > 0 ? (
                   <div className="asset-group">
                     <div className="asset-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
                       <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>图像（可多选）</label>
@@ -2734,7 +2858,25 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
             </div>
 
             <div className="config-section">
-              <div className="section-title">精修历史</div>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+                <div className="section-title" style={{margin: 0}}>精修历史</div>
+                {selectedRefinedImage && (
+                    <button 
+                        onClick={restoreEditState}
+                        style={{
+                            fontSize: '0.8rem',
+                            padding: '4px 8px',
+                            background: '#f3f4f6',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            color: '#4b5563'
+                        }}
+                    >
+                        展示原始结果
+                    </button>
+                )}
+              </div>
               {refinedImages.length > 0 ? (
                 <div className="refined-gallery-grid">
                   {refinedImages.map((image, index) => (
@@ -2818,17 +2960,21 @@ Generate a stunning infographic that transforms the raw chart into a visually ap
             </button>
           </div>
         </div>
-        <canvas id="workbenchCanvas" />
+        <div className="canvas-wrapper" ref={canvasWrapperRef}>
+          <canvas id="workbenchCanvas" />
+        </div>
   
       </div>
 
-      {/* Loading Overlay */}
+      {/* Loading Overlay - Removed per user request */}
+      {/* 
       {loading && (
         <div className="loading-overlay">
           <div className="loading-spinner"></div>
           <div className="loading-text">{loadingText}</div>
         </div>
       )}
+      */}
       
       {/* Refined Image Zoom Modal */}
       {showRefinedModal && selectedRefinedImage && (

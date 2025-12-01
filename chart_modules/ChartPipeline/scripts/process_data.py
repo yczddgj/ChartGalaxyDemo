@@ -56,7 +56,17 @@ except Exception as e:
 ICON_EMBEDDINGS_CACHE = {}
 
 # OpenAI API configuration
-API_KEY = 'sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360'
+import sys
+import os
+from pathlib import Path
+
+# Add project root to sys.path to allow importing config
+project_root = Path(__file__).resolve().parents[3]
+sys.path.append(str(project_root))
+
+import config
+
+API_KEY = config.OPENAI_API_KEY
 API_PROVIDER = 'https://aihubmix.com'
 
 def query_openai(prompt: str) -> str:

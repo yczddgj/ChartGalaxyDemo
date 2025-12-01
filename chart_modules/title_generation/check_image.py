@@ -1,13 +1,29 @@
 from openai import OpenAI
 import base64
 import json
+import sys
+import os
+
+# Add project root to sys.path to import config
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+sys.path.append(project_root)
+
+import config
+
+# 获取当前文件所在目录的绝对路径
+_current_dir = os.path.dirname(os.path.abspath(__file__))
 
 def check(  title, 
-            prompt_path = 'prompts/check_prompt_gpt_en.md', 
+            prompt_path = None, 
             image_path = 'images/title/generated_image.png'):
+    
+    if prompt_path is None:
+        prompt_path = os.path.join(_current_dir, 'prompts/check_prompt_gpt_en.md')
+        
     client = OpenAI(
-        api_key="sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360",
-        base_url="https://aihubmix.com/v1"
+        api_key=config.OPENAI_API_KEY,
+        base_url=config.OPENAI_BASE_URL
     )
     with open(prompt_path, 'r', encoding='utf-8') as file:
         check_prompt = file.read()

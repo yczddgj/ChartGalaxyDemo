@@ -418,7 +418,7 @@ function makeChart(containerSelector, data) {
 
     const legend = svg.append("g")
         .attr("class", "legend")
-        .attr("transform", `translate(${(width - totalLegendWidth) / 2}, 30)`);
+        .attr("transform", `translate(${(width - totalLegendWidth) / 2}, 90)`);
 
     let legendOffset = 0;
     legendData.forEach((item, i) => {

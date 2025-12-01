@@ -3,13 +3,26 @@
 
 """
 图表类型推荐模块 (chart_type_recommender)
-基于输入数据特征，自动推荐最合适的图表类型
+基于输入数据特征，使用大模型自动推荐最合适的图表类型
 """
 
 import json
 import logging
 import argparse
 from typing import Dict, List, Any, Tuple
+import sys
+import os
+from pathlib import Path
+
+# 添加项目路径以导入 config
+project_root = Path(__file__).parent.parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+import config
+import openai
+
+API_KEY = config.OPENAI_API_KEY
+BASE_URL = config.OPENAI_BASE_URL
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -71,15 +84,198 @@ def analyze_data_structure(data: Dict[str, Any]) -> Dict[str, Any]:
     
     return features
 
-def recommend_chart_types(data_features: Dict[str, Any]) -> List[Dict[str, Any]]:
+def recommend_chart_types_with_llm(data: Dict[str, Any], available_chart_types: List[str] = None) -> List[Dict[str, Any]]:
     """
-    基于数据特征推荐合适的图表类型
+    使用大模型基于数据特征推荐合适的图表类型（最多6个）
+    
+    Args:
+        data: 原始数据对象
+        available_chart_types: 可用的图表类型列表，如果为None则使用默认列表
+        
+    Returns:
+        推荐的图表类型列表，按置信度排序，最多6个
+    """
+    if available_chart_types is None:
+        available_chart_types = CHART_TYPES
+    
+    try:
+        # 分析数据结构
+        data_features = analyze_data_structure(data)
+        
+        # 准备数据摘要
+        columns = data.get("data", {}).get("columns", [])
+        rows = data.get("data", {}).get("data", [])
+        
+        # 构建数据摘要
+        data_summary = {
+            "列数": len(columns),
+            "行数": len(rows),
+            "时间列": data_features["time_columns"],
+            "数值列": data_features["number_columns"],
+            "分类列": data_features["categorical_columns"],
+            "列详情": [{"name": col.get("name", ""), "type": col.get("data_type", "")} for col in columns]
+        }
+        
+        # 构建数据表格（只取前20行，避免token过多）
+        data_table_rows = []
+        column_names = [col.get("name", "") for col in columns]
+        
+        # 添加表头
+        if column_names and rows:
+            # 转义markdown特殊字符
+            def escape_markdown(text):
+                text = str(text)
+                # 转义管道符和换行符
+                text = text.replace("|", "\\|").replace("\n", " ").replace("\r", " ")
+                return text
+            
+            # 表头
+            header = "| " + " | ".join([escape_markdown(name) for name in column_names]) + " |"
+            separator = "| " + " | ".join(["---"] * len(column_names)) + " |"
+            data_table_rows.append(header)
+            data_table_rows.append(separator)
+            
+            # 添加数据行（最多20行）
+            for i, row in enumerate(rows[:20]):
+                row_values = []
+                for col_name in column_names:
+                    # 从行数据中获取对应列的值
+                    if isinstance(row, dict):
+                        value = row.get(col_name, "")
+                    elif isinstance(row, list) and i < len(rows):
+                        # 如果row是列表，按列索引获取
+                        col_index = column_names.index(col_name) if col_name in column_names else -1
+                        value = row[col_index] if 0 <= col_index < len(row) else ""
+                    else:
+                        value = ""
+                    
+                    # 如果是列表或字典，转换为字符串
+                    if isinstance(value, (list, dict)):
+                        value = json.dumps(value, ensure_ascii=False)
+                    
+                    # 限制单元格内容长度并转义
+                    value_str = str(value) if value is not None else ""
+                    if len(value_str) > 50:
+                        value_str = value_str[:47] + "..."
+                    row_values.append(escape_markdown(value_str))
+                
+                data_table_rows.append("| " + " | ".join(row_values) + " |")
+            
+            if len(rows) > 20:
+                data_table_rows.append(f"\n*注：还有 {len(rows) - 20} 行数据未显示*")
+        
+        data_table = "\n".join(data_table_rows) if data_table_rows else "（无数据）"
+        
+        # 准备提示词
+        prompt = f"""你是一个数据可视化专家。请根据以下数据特征和具体数据表格，从可用的图表类型中推荐最合适的图表类型（最多6个）。
+
+数据特征：
+{json.dumps(data_summary, ensure_ascii=False, indent=2)}
+
+具体数据表格：
+{data_table}
+
+可用的图表类型：
+{', '.join(available_chart_types)}
+
+请仔细分析数据特征和具体数据内容，推荐最多6个最合适的图表类型，并按照适合程度从高到低排序。
+对于每个推荐的图表类型，请提供：
+1. 图表类型名称（必须从可用列表中选择，完全匹配）
+2. 置信度（0-1之间的浮点数）
+3. 推荐理由（简短说明为什么这个图表类型适合这些数据）
+
+请以JSON格式返回，格式如下：
+{{
+  "recommendations": [
+    {{
+      "type": "图表类型名称",
+      "confidence": 0.95,
+      "reasoning": "推荐理由"
+    }}
+  ]
+}}
+
+只返回JSON，不要其他文字。"""
+        
+        # 调用大模型（使用 Gemini 2.0 Flash）
+        client = openai.OpenAI(
+            api_key=API_KEY,
+            base_url=BASE_URL
+        )
+        
+        response = client.chat.completions.create(
+            model="gemini-2.0-flash",  # 使用 Gemini 2.0 Flash 模型
+            messages=[
+                {"role": "system", "content": "你是一个专业的数据可视化专家，擅长根据数据特征和具体数据内容推荐最合适的图表类型。"},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=1500
+        )
+        
+        # 解析响应
+        content = response.choices[0].message.content.strip()
+        
+        # 尝试提取JSON
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+        
+        result = json.loads(content)
+        recommendations = result.get("recommendations", [])
+        
+        # 验证和过滤：确保类型在可用列表中，并限制最多6个
+        valid_recommendations = []
+        seen_types = set()
+        
+        for rec in recommendations[:6]:  # 最多取6个
+            chart_type = rec.get("type", "").strip()
+            # 尝试匹配可用的图表类型（不区分大小写，支持部分匹配）
+            matched_type = None
+            chart_type_lower = chart_type.lower()
+            
+            for available_type in available_chart_types:
+                if chart_type_lower == available_type.lower() or chart_type_lower in available_type.lower() or available_type.lower() in chart_type_lower:
+                    matched_type = available_type
+                    break
+            
+            if matched_type and matched_type not in seen_types:
+                valid_recommendations.append({
+                    "type": matched_type,
+                    "confidence": float(rec.get("confidence", 0.5)),
+                    "reasoning": rec.get("reasoning", "适合展示这些数据")
+                })
+                seen_types.add(matched_type)
+        print(valid_recommendations)
+        # 如果大模型没有返回有效推荐，使用规则作为后备
+        if not valid_recommendations:
+            logger.warning("大模型未返回有效推荐，使用规则作为后备")
+            return recommend_chart_types_fallback(data_features, available_chart_types)
+        
+        # 按置信度排序
+        valid_recommendations.sort(key=lambda x: x["confidence"], reverse=True)
+        
+        return valid_recommendations[:6]  # 确保最多6个
+        
+    except Exception as e:
+        logger.error(f"使用大模型推荐图表类型失败: {e}")
+        logger.info("回退到规则推荐方法")
+        # 如果大模型失败，使用规则方法作为后备
+        data_features = analyze_data_structure(data)
+        return recommend_chart_types_fallback(data_features, available_chart_types)
+
+
+def recommend_chart_types_fallback(data_features: Dict[str, Any], available_chart_types: List[str]) -> List[Dict[str, Any]]:
+    """
+    基于规则的图表类型推荐（作为大模型失败时的后备方案）
     
     Args:
         data_features: 数据特征字典
+        available_chart_types: 可用的图表类型列表
         
     Returns:
-        推荐的图表类型列表，按置信度排序
+        推荐的图表类型列表，最多6个
     """
     recommendations = []
     
@@ -91,68 +287,65 @@ def recommend_chart_types(data_features: Dict[str, Any]) -> List[Dict[str, Any]]
     # 时间序列分析
     if has_time and has_number:
         if has_category:
-            # 具有分类的时间序列，推荐堆叠图和分组柱状图
-            recommendations.append({
-                "type": "vertical_stacked_bar_chart",
-                "confidence": 0.92,
-                "reasoning": "适合比较不同时间段内多个类别的分布情况，同时展示总量变化趋势"
-            })
-            
-            recommendations.append({
-                "type": "grouped_bar_chart",
-                "confidence": 0.75,
-                "reasoning": "适合清晰对比不同时期内各类别的具体数值"
-            })
-            
-            recommendations.append({
-                "type": "area_chart",
-                "confidence": 0.68,
-                "reasoning": "适合展示不同类别随时间的变化趋势和累积效应"
-            })
+            # 具有分类的时间序列
+            for chart_type in ["vertical_stacked_bar_chart", "grouped_bar_chart", "area_chart", "line_chart"]:
+                if chart_type in available_chart_types and len(recommendations) < 6:
+                    recommendations.append({
+                        "type": chart_type,
+                        "confidence": 0.8 - len(recommendations) * 0.1,
+                        "reasoning": f"适合展示具有分类维度的时间序列数据"
+                    })
         else:
-            # 简单时间序列，推荐折线图和柱状图
-            recommendations.append({
-                "type": "line_chart",
-                "confidence": 0.88,
-                "reasoning": "适合展示连续时间序列的趋势变化"
-            })
-            
-            recommendations.append({
-                "type": "vertical_bar_chart",
-                "confidence": 0.75,
-                "reasoning": "适合比较不同时间点的数值大小"
-            })
+            # 简单时间序列
+            for chart_type in ["line_chart", "vertical_bar_chart", "area_chart"]:
+                if chart_type in available_chart_types and len(recommendations) < 6:
+                    recommendations.append({
+                        "type": chart_type,
+                        "confidence": 0.85 - len(recommendations) * 0.1,
+                        "reasoning": f"适合展示时间序列数据"
+                    })
     
     # 分类比较
     elif has_category and has_number and not has_time:
-        recommendations.append({
-            "type": "horizontal_bar_chart",
-            "confidence": 0.85,
-            "reasoning": "适合比较不同类别的数值大小"
-        })
-        
-        if len(data_features["categorical_columns"]) > 1:
-            recommendations.append({
-                "type": "heatmap",
-                "confidence": 0.72,
-                "reasoning": "适合展示两个分类变量之间的关系和数值分布"
-            })
-        else:
-            recommendations.append({
-                "type": "Pie Chart",
-                "confidence": 0.65,
-                "reasoning": "适合展示不同类别的占比情况"
-            })
+        for chart_type in ["horizontal_bar_chart", "vertical_bar_chart", "pie_chart", "donut_chart"]:
+            if chart_type in available_chart_types and len(recommendations) < 6:
+                recommendations.append({
+                    "type": chart_type,
+                    "confidence": 0.8 - len(recommendations) * 0.1,
+                    "reasoning": f"适合比较分类数据"
+                })
     
     # 如果没有匹配的推荐，提供默认选项
     if not recommendations:
-        recommendations.append({
-            "type": "vertical_bar_chart",
-            "confidence": 0.60,
-            "reasoning": "通用图表类型，适合大多数数据展示需求"
-        })
+        default_types = ["vertical_bar_chart", "horizontal_bar_chart", "line_chart", "pie_chart"]
+        for chart_type in default_types:
+            if chart_type in available_chart_types and len(recommendations) < 6:
+                recommendations.append({
+                    "type": chart_type,
+                    "confidence": 0.6 - len(recommendations) * 0.05,
+                    "reasoning": "通用图表类型，适合大多数数据展示需求"
+                })
     
-    return recommendations
+    return recommendations[:6]  # 确保最多6个
+
+
+def recommend_chart_types(data_features: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    基于数据特征推荐合适的图表类型（兼容旧接口，内部调用大模型推荐）
+    
+    Args:
+        data_features: 数据特征字典（为了兼容，但实际需要完整数据对象）
+        
+    Returns:
+        推荐的图表类型列表，按置信度排序
+    """
+    # 如果传入的是完整数据对象，直接使用
+    print("recommend_chart_types")
+    if "data" in data_features:
+        return recommend_chart_types_with_llm(data_features)
+    
+    # 否则使用规则方法
+    return recommend_chart_types_fallback(data_features, CHART_TYPES)
 
 def process(input: str, output: str) -> bool:
     """
@@ -175,9 +368,9 @@ def process(input: str, output: str) -> bool:
         logger.info("分析数据结构和特征")
         data_features = analyze_data_structure(data)
         
-        # 生成图表类型推荐
-        logger.info("生成图表类型推荐")
-        chart_type_recommendations = recommend_chart_types(data_features)
+        # 生成图表类型推荐（使用大模型）
+        logger.info("使用大模型生成图表类型推荐")
+        chart_type_recommendations = recommend_chart_types_with_llm(data, CHART_TYPES)
         
         # 添加推荐结果到原始数据
         data["chart_type"] = chart_type_recommendations

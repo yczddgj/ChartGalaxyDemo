@@ -1,5 +1,14 @@
 # 1. 扫描当前目录下所有image文件 包含png jpg jpeg webp，进行编号 存储下list
 import os, json
+import sys
+
+# Add project root to sys.path to import config
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
+sys.path.append(project_root)
+
+import config
+
 image_pathes = []
 root = './images/'
 image_path_file = 'image_pathes.json'
@@ -17,8 +26,8 @@ import base64
 from io import BytesIO
 
 client = OpenAI(
-    api_key="sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360",
-    base_url="https://aihubmix.com/v1"
+    api_key=config.OPENAI_API_KEY,
+    base_url=config.OPENAI_BASE_URL
 )
 
 def resize_image(img, max_size=512):
