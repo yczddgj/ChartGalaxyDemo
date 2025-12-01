@@ -14,18 +14,15 @@ import sys
 import os
 from pathlib import Path
 
-# 添加项目路径以导入 style_refinement
+# 添加项目路径以导入 config
 project_root = Path(__file__).parent.parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-try:
-    from chart_modules.style_refinement import API_KEY, BASE_URL
-    import openai
-except ImportError:
-    # 如果导入失败，使用默认配置
-    API_KEY = "sk-NNBhkfmYuZB6IQCY7f9eCd8841864eB6B3C7Fc0a7d4a8360"
-    BASE_URL = "https://aihubmix.com/v1"
-    import openai
+import config
+import openai
+
+API_KEY = config.OPENAI_API_KEY
+BASE_URL = config.OPENAI_BASE_URL
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

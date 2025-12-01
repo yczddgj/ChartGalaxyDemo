@@ -43,6 +43,8 @@ function Workbench() {
   const [chartTypesLoadingText, setChartTypesLoadingText] = useState('');
   const [variationLoading, setVariationLoading] = useState(false);
   const [variationLoadingText, setVariationLoadingText] = useState('');
+  const [referenceProcessing, setReferenceProcessing] = useState(false);
+  const [referenceProcessingText, setReferenceProcessingText] = useState('');
   const [previewTimestamp, setPreviewTimestamp] = useState(Date.now());
   const [layoutNeedsFreshLoad, setLayoutNeedsFreshLoad] = useState(false);
 
@@ -829,20 +831,21 @@ Generate a high-fidelity design that combines the *data* of the Original Image w
     setLayoutNeedsFreshLoad(true);
 
     setSelectedReference(refName);
-    setLoading(true);
-    setLoadingText('Extracting style & Generating assets...');
+    setReferenceProcessing(true);
+    setReferenceProcessingText('Extracting style...');
     try {
       const dataName = selectedFile.replace('.csv', '');
       // 1. Extract Layout/Style
       await axios.get(`/api/start_layout_extraction/${refName}/${dataName}`);
       
       pollStatus(async () => {
+          setReferenceProcessing(false);
           // 2. Generate Title
           await generateTitle();
       }, 'layout_extraction', false);
     } catch (err) {
       console.error(err);
-      setLoading(false);
+      setReferenceProcessing(false);
     }
   };
 
@@ -2611,6 +2614,13 @@ Generate a high-fidelity design that combines the *data* of the Original Image w
                     />
                   </div>
                 )}
+
+                {referenceProcessing && (
+                  <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', marginTop: '15px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1'}}>
+                    <div className="loading-spinner" style={{width: '32px', height: '32px', border: '3px solid var(--border-color)', borderTop: '3px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: '10px'}}></div>
+                    <div style={{fontSize: '0.875rem', color: 'var(--text-secondary)', textAlign: 'center'}}>{referenceProcessingText}</div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2943,13 +2953,15 @@ Generate a high-fidelity design that combines the *data* of the Original Image w
   
       </div>
 
-      {/* Loading Overlay */}
+      {/* Loading Overlay - Removed per user request */}
+      {/* 
       {loading && (
         <div className="loading-overlay">
           <div className="loading-spinner"></div>
           <div className="loading-text">{loadingText}</div>
         </div>
       )}
+      */}
       
       {/* Refined Image Zoom Modal */}
       {showRefinedModal && selectedRefinedImage && (

@@ -8,6 +8,14 @@ import logging
 from typing import Any, Dict, List, Tuple, Union
 from openai import OpenAI
 from utils.model_loader import ModelLoader
+import sys
+
+# Add project root to sys.path to import config
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
+sys.path.append(project_root)
+
+import config
 
 # 配置日志
 logging.basicConfig(
@@ -55,10 +63,8 @@ class RagTitleGenerator:
 
         print(api_key, base_url)
         self.client = OpenAI(
-            api_key=api_key,
-            # "sk-7TndhZHnyzdeSVpL4755335348B4425cB64bF8Ea80379073",
-            base_url=base_url
-            # "https://aihubmix.com/v1"
+            api_key=api_key if api_key else config.OPENAI_API_KEY,
+            base_url=base_url if base_url else config.OPENAI_BASE_URL
         )
 
         # Try loading an existing FAISS index and data
@@ -396,8 +402,8 @@ def main():
     parser.add_argument('--data_path', type=str, default='infographics_data.npy', help='Training data path.')
     parser.add_argument('--topk', type=int, default=3, help='Number of similar examples to retrieve.')
     parser.add_argument('--embed_model_path', type=str, default='', help='Sentence transformer path')
-    parser.add_argument('--api_key', type=str, default='', help='API key for LLM.')
-    parser.add_argument('--base_url', type=str, default='', help='Base URL for LLM.')
+    parser.add_argument('--api_key', type=str, default=config.OPENAI_API_KEY, help='API key for LLM.')
+    parser.add_argument('--base_url', type=str, default=config.OPENAI_BASE_URL, help='Base URL for LLM.')
 
     args = parser.parse_args()
 

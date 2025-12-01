@@ -194,6 +194,8 @@ function Editor() {
         </div>
       </div>
       
+      {/* Loading Overlay - Removed per user request */}
+      {/*
       {loading && (
         <div className="loading-overlay" style={{ display: 'flex' }}>
           <div className="loading-content">
@@ -202,6 +204,7 @@ function Editor() {
           </div>
         </div>
       )}
+      */}
     </div>
   );
 }

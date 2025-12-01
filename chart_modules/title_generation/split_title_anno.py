@@ -1,6 +1,15 @@
 from openai import OpenAI
 import json
 from enum import Enum
+import sys
+import os
+
+# Add project root to sys.path to import config
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+sys.path.append(project_root)
+
+import config
 
 class TextClass(Enum):
     ONLY_TITLE = 1

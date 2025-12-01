@@ -1,10 +1,26 @@
 from openai import OpenAI
 import base64
 import json
+import sys
+import os
+
+# Add project root to sys.path to import config
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+sys.path.append(project_root)
+
+import config
+
+# 获取当前文件所在目录的绝对路径
+_current_dir = os.path.dirname(os.path.abspath(__file__))
 
 def check(  title, 
-            prompt_path = 'prompts/check_prompt_gpt_en.md', 
+            prompt_path = None, 
             image_path = 'images/title/generated_image.png'):
+    
+    if prompt_path is None:
+        prompt_path = os.path.join(_current_dir, 'prompts/check_prompt_gpt_en.md')
+        
     client = OpenAI(
         api_key=config.OPENAI_API_KEY,
         base_url=config.OPENAI_BASE_URL
