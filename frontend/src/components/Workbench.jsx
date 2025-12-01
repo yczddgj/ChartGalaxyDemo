@@ -660,6 +660,12 @@ Generate a high-fidelity design that combines the *data* of the Original Image w
 
 
   const handleChartTypeSelect = async (typeItem) => {
+    console.log('[DEBUG] handleChartTypeSelect called', {
+      typeItem,
+      originalType: typeItem.type,
+      mergedTypes: typeItem.mergedTypes
+    });
+
     // Reset downstream state
     setSelectedVariation('');
     setVariations([]);
@@ -678,14 +684,21 @@ Generate a high-fidelity design that combines the *data* of the Original Image w
 
     // 如果这是合并的类型，使用第一个类型
     const actualType = typeItem.mergedTypes ? typeItem.mergedTypes[0] : typeItem.type;
+    console.log('[DEBUG] Selected chart type:', actualType, {
+      isMerged: !!typeItem.mergedTypes,
+      allMergedTypes: typeItem.mergedTypes
+    });
+    
     setSelectedChartType(actualType);
     setLoading(true);
     setLoadingText('Loading variations...');
     try {
-      await axios.get(`/api/chart_types/select/${actualType}`);
+      const selectRes = await axios.get(`/api/chart_types/select/${actualType}`);
+      console.log('[DEBUG] Chart type select response:', selectRes.data);
+      
       await fetchVariations();
     } catch (err) {
-      console.error(err);
+      console.error('[DEBUG] Error selecting chart type:', err);
       setLoading(false);
     }
   };
