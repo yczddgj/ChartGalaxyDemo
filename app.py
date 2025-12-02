@@ -383,6 +383,83 @@ def get_layout():
 
     return jsonify({'layout': layout})
 
+@app.route('/api/optimize_image_position', methods=['POST'])
+def optimize_image_position():
+    """优化图片位置和大小"""
+    try:
+        import sys
+        import base64
+        from PIL import Image
+        import io
+        sys.path.append('chart_modules/layout_optimization')
+        from chart_modules.layout_optimization.main import make_infographic
+        
+        data = request.json
+        chart_with_title_base64 = data.get('chart_with_title_image')
+        pictogram_base64 = data.get('pictogram_image')
+        canvas_width = data.get('canvas_width', 1200)
+        canvas_height = data.get('canvas_height', 800)
+        
+        if not chart_with_title_base64 or not pictogram_base64:
+            return jsonify({'error': 'Missing required parameters'}), 400
+        
+        # 保存临时文件
+        import tempfile
+        import os
+        
+        # 解码base64图片
+        chart_image_data = base64.b64decode(chart_with_title_base64.split(',')[1] if ',' in chart_with_title_base64 else chart_with_title_base64)
+        chart_image = Image.open(io.BytesIO(chart_image_data))
+        
+        pictogram_image_data = base64.b64decode(pictogram_base64.split(',')[1] if ',' in pictogram_base64 else pictogram_base64)
+        pictogram_image = Image.open(io.BytesIO(pictogram_image_data))
+        
+        # 保存到临时文件
+        temp_chart_path = os.path.join('chart_modules/layout_optimization/tmp', 'temp_chart_with_title.png')
+        temp_pictogram_path = os.path.join('chart_modules/layout_optimization/tmp', 'temp_pictogram.png')
+        os.makedirs(os.path.dirname(temp_chart_path), exist_ok=True)
+        chart_image.save(temp_chart_path)
+        pictogram_image.save(temp_pictogram_path)
+        
+        # 调用make_infographic
+        result = make_infographic(
+            data={},
+            chart_png_path=temp_chart_path,
+            image_png_path=temp_pictogram_path,
+            padding=20,
+            between_padding=15
+        )
+        
+        # 保存结果图片到layout_optimization目录
+        result_image_path = os.path.join('chart_modules/layout_optimization', 'infographic_result.png')
+        if os.path.exists(result_image_path):
+            # 将结果图片转换为base64返回
+            with open(result_image_path, 'rb') as f:
+                result_image_base64 = base64.b64encode(f.read()).decode('utf-8')
+        else:
+            result_image_base64 = None
+        
+        # 返回结果（包含image的尺寸和位置）
+        return jsonify({
+            'success': True,
+            'image_size': result['image_size'],
+            'image_x': result['image_x'],
+            'image_y': result['image_y'],
+            'result_image': result_image_base64,  # 添加结果图片的base64
+            'debug_info': {
+                'chart_size': f"{Image.open(temp_chart_path).size}",
+                'pictogram_size': f"{Image.open(temp_pictogram_path).size}",
+                'canvas_size': f"{canvas_width}x{canvas_height}",
+                'padding': 20
+            }
+        })
+        
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        app.logger.error(f"Error in optimize_image_position: {error_trace}")
+        return jsonify({'error': str(e), 'trace': error_trace}), 500
+
 @app.route('/api/chart_types')
 def get_chart_types():
     """获取推荐的 chart type 列表，基于数据特征使用大模型推荐，每次返回3个"""
@@ -1276,7 +1353,15 @@ def preview_data(filename):
 
 if __name__ == '__main__':
     # 自动寻找可用端口
-    free_port = find_free_port()
-    print(f"Starting server on port {free_port}")
+    # free_port = find_free_port()
+    # print(f"Starting server on port {free_port}")
+    
+    # # Print registered routes for debugging
+    # print("\n=== Registered API Routes ===")
+    # for rule in app.url_map.iter_rules():
+    #     if '/api/' in str(rule):
+    #         print(f"  {rule} -> {rule.endpoint} [{','.join(rule.methods)}]")
+    # print("============================\n")
+    
     # 启用热重载：当代码文件修改时自动重启服务器
     app.run(debug=True, host='0.0.0.0', port=5185, use_reloader=True)

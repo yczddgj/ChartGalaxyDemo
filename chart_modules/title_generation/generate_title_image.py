@@ -113,7 +113,7 @@ def get_image(  bg_hex,
                         print(f"图片已保存至：{save_path}")
                         
                         # Remove background immediately after saving
-                        remove_background(save_path)
+                        # remove_background(save_path)
                         
                         image_saved = True
                         break # 只保存第一张图片

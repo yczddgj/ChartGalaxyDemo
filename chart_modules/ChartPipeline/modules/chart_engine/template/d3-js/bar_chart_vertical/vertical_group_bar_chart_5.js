@@ -187,10 +187,10 @@ function makeChart(containerSelector, data) {
     const dataMin = d3.min(useData, d => +d[yField]) ;
     // 向上取整到最接近的合适的刻度
     let yMax;
-    yMax = Math.ceil(dataMax * 1.1 / 10) * 10; // 向上取整到最接近的10的倍数
+    yMax = Math.ceil(dataMax * 1.05 / 5) * 5; // 向上取整到最接近的10的倍数
     let yMin;
     if (dataMin < 0) {
-        yMin = Math.floor(dataMin * 1.2 / 10) * 10; // 向下取整到最接近的10的倍数
+        yMin = Math.floor(dataMin * 1.2 / 5) * 5; // 向下取整到最接近的10的倍数
     }
     else {
         yMin = 0; // 如果没有负值，则从0开始

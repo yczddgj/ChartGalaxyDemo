@@ -18,6 +18,7 @@ from chart_modules.reference_recognize.extract_main_color import extract_main_co
 from chart_modules.generate_variation import generate_variation
 from chart_modules.ChartPipeline.modules.infographics_generator.template_utils import block_list
 from chart_modules.reference_describe import get_reference_descriptions
+from chart_modules.title_generation_new.pipeline import run as new_title_run
 
 # 默认颜色配置（在选择参考图之前使用）
 DEFAULT_COLORS = [
@@ -103,20 +104,35 @@ def conduct_title_generation(datafile, generation_status, use_cache=True):
     generation_status['completed'] = False
 
     try:
-        # 生成3张标题图片（并行）
+        # 生成3张标题图片（并行），改用 title_generation_new 的生成流程
         generation_status['progress'] = '并行生成标题中...'
         generator = InfographicImageGenerator()
         generator.output_dir = f"buffer/{generation_status['id']}"
 
-        # 获取背景色（从参考图表中提取的背景色）
-        bg_color = generation_status.get('style', {}).get('bg_color', [245, 243, 239])
-        # 将 RGB 列表转换为 hex 格式
-        if isinstance(bg_color, list) and len(bg_color) == 3:
-            bg_hex = "#{:02x}{:02x}{:02x}".format(bg_color[0], bg_color[1], bg_color[2])
-        else:
-            bg_hex = "#f5f3ef"  # 默认浅灰色
+        # 优先使用「已选 chart PNG」，若不存在再退回参考图
+        chart_path = None
+        try:
+            session_id = generation_status.get('id')
+            selected_chart_type = generation_status.get('selected_chart_type')
+            if session_id and selected_chart_type:
+                candidate_chart_png = os.path.join(
+                    "buffer",
+                    str(session_id),
+                    f"{selected_chart_type}.png"
+                )
+                if os.path.exists(candidate_chart_png):
+                    chart_path = candidate_chart_png
+                    print(f"[title_generation_new] 使用已选 chart PNG 作为风格参考: {chart_path}")
+        except Exception as e:
+            print(f"[title_generation_new] 查找已选 chart PNG 出错: {e}")
 
-        # 获取参考图的标题描述
+        # 如果没有 chart PNG，则回退到参考信息图
+        if chart_path is None:
+            chart_path = generation_status.get('selected_reference')
+            if chart_path:
+                print(f"[title_generation_new] 使用参考信息图作为风格参考: {chart_path}")
+
+        # 获取参考图的标题描述（仅用于生成缓存 hash，不再直接用于图像生成）
         reference_descriptions = generation_status.get('reference_descriptions', {})
         title_style_description = reference_descriptions.get('title_description') if reference_descriptions else None
 
@@ -131,15 +147,30 @@ def conduct_title_generation(datafile, generation_status, use_cache=True):
         threads = []
 
         def generate_title_task(index, output_filename):
-            result = generator.generate_single_title(
-                csv_path=os.path.join('processed_data', datafile),
-                bg_color=bg_hex,
-                output_filename=output_filename,
-                use_cache=use_cache,
-                style_description=title_style_description
-            )
-            results[index] = result
-            print(f"Generated title {index}: {result['title_text']}")
+            try:
+                csv_path = os.path.join('processed_data', datafile)
+                # 1. 先用旧流程生成标题文本（不再用其图片生成）
+                csv_data = generator.read_csv_data(csv_path)
+                title_text = generator.generate_title_text(csv_data)
+
+                # 2. 使用新 pipeline 生成标题图片
+                effective_chart_path = chart_path if (chart_path and os.path.exists(chart_path)) else ""
+                new_title_run(title_text, effective_chart_path, output_filename, use_cache=use_cache)
+
+                success = os.path.exists(output_filename)
+                results[index] = {
+                    'title_text': title_text,
+                    'image_path': output_filename if success else None,
+                    'success': success
+                }
+                print(f"Generated title {index}: {title_text}, success={success}")
+            except Exception as e:
+                print(f"generate_title_task error (index={index}): {e}")
+                results[index] = {
+                    'title_text': "",
+                    'image_path': None,
+                    'success': False
+                }
 
         for i in range(3):
             output_filename = f"buffer/{generation_status['id']}/title_{i}{desc_hash}.png"
