@@ -379,7 +379,7 @@ function Workbench() {
   const handleReferenceSelect = async (refName) => {
     // Reset downstream state
     setTitleImage('');
-    setSelectedPictograms([]);
+    setSelectedPictograms('');
     setTitleOptions([]);
     setPictogramOptions([]);
     setSavedPositions({ chart: null, title: null, pictograms: [] });
@@ -430,9 +430,9 @@ function Workbench() {
 
   // Auto-reload canvas when assets change (with debounce)
   useEffect(() => {
-      console.log('[DEBUG] Auto-reload useEffect triggered:', { selectedVariation, titleImage, selectedPictograms: selectedPictograms.length, canvas: !!canvas, layoutNeedsFreshLoad });
+      console.log('[DEBUG] Auto-reload useEffect triggered:', { selectedVariation, titleImage, selectedPictograms, canvas: !!canvas, layoutNeedsFreshLoad });
       
-      if (!canvas || !selectedVariation || (!titleImage && selectedPictograms.length === 0)) {
+      if (!canvas || !selectedVariation || (!titleImage && !selectedPictograms)) {
           return undefined;
       }
       
@@ -491,20 +491,20 @@ function Workbench() {
   useEffect(() => {
       const loadRefinementHistory = async () => {
           // Only load history if we have all required materials
-          if (!titleImage || !selectedPictograms || selectedPictograms.length === 0 || !selectedVariation) {
+          if (!titleImage || !selectedPictograms || !selectedVariation) {
               return;
           }
 
           console.log('Loading refinement history for materials:', {
               titleImage,
-              pictogram: selectedPictograms[0],
+              pictogram: selectedPictograms,
               chart_type: selectedVariation
           });
 
           try {
               const response = await axios.post('/api/material_history', {
                   title: titleImage,
-                  pictogram: selectedPictograms[0],
+                  pictogram: selectedPictograms,
                   chart_type: selectedVariation
               });
 
@@ -772,6 +772,40 @@ function Workbench() {
       }
   };
 
+  // --- Redo Functionality (Reset Reference Selection) ---
+  const handleRedoReset = () => {
+    // 清空参考图片选择
+    setSelectedReference('');
+    
+    // 清空参考图片处理状态
+    setReferenceProcessing(false);
+    setReferenceProcessingText('');
+    
+    // 清空所有相关的资源和结果
+    resetAssets();
+    
+    // 清空精修图片历史
+    setRefinedImages([]);
+    setSelectedRefinedImage(null);
+    
+    // 清空保存的位置
+    setSavedPositions({ chart: null, title: null, pictograms: [] });
+    
+    // 清空画布
+    if (canvas) {
+      canvas.clear();
+      canvas.setBackgroundColor('#ffffff', canvas.renderAll.bind(canvas));
+      setBgColor('#ffffff');
+      const canvasWrapper = document.querySelector('.canvas-wrapper');
+      if (canvasWrapper) {
+        canvasWrapper.style.backgroundColor = '#ffffff';
+      }
+    }
+    
+    // 重置布局标志
+    setLayoutNeedsFreshLoad(false);
+  };
+
   // --- Refine Functionality ---
   const handleRefine = async () => {
       if (!canvas) {
@@ -798,7 +832,7 @@ function Workbench() {
           // Include material information for caching
           console.log('[DEBUG] AI精修参数:', {
               title: titleImage,
-              pictogram: selectedPictograms.length > 0 ? selectedPictograms[0] : '',
+              pictogram: selectedPictograms || '',
               chart_type: selectedVariation,
               force_regenerate: true
           });
@@ -807,7 +841,7 @@ function Workbench() {
               png_base64: pngDataURL,
               background_color: backgroundColor,
               title: titleImage,
-              pictogram: selectedPictograms.length > 0 ? selectedPictograms[0] : '',
+              pictogram: selectedPictograms || '',
               chart_type: selectedVariation,
               force_regenerate: true  // Always generate new version for AI refine button
           });
@@ -851,7 +885,7 @@ function Workbench() {
                       try {
                           const historyResponse = await axios.post('/api/material_history', {
                               title: titleImage,
-                              pictogram: selectedPictograms.length > 0 ? selectedPictograms[0] : '',
+                              pictogram: selectedPictograms || '',
                               chart_type: selectedVariation
                           });
 
@@ -1045,8 +1079,9 @@ function Workbench() {
           hasSelection={hasSelection}
           snapshotCount={snapshotCount}
           onDelete={handleDelete}
-          onRedo={handleRedo}
+          onRedo={handleRedoReset}
           onDownload={handleDownloadCanvas}
+          hasReference={!!selectedReference}
         />
         <div className="canvas-wrapper" ref={canvasWrapperRef} style={{ position: 'relative' }}>
             <canvas id="workbenchCanvas" />

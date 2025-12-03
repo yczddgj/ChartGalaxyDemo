@@ -252,7 +252,7 @@ export function AssetsSection({
   onRegeneratePictogram
 }) {
   // Don't return null if loading - we want to show the loading animation
-  if (!titleImage && selectedPictograms.length === 0 && !titleLoading && !pictogramLoading) return null;
+  if (!titleImage && !selectedPictograms && !titleLoading && !pictogramLoading) return null;
 
   return (
     <div className="config-section">
@@ -309,7 +309,7 @@ export function AssetsSection({
       {pictogramLoading ? (
         <div className="asset-group" style={{position: 'relative'}}>
           <div className="asset-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-            <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>图像（可多选）</label>
+            <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>图像</label>
             <button disabled style={{fontSize: '0.875rem', padding: '2px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'not-allowed', opacity: 0.6}}>重新生成</button>
           </div>
           <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', minHeight: '120px'}}>
@@ -320,19 +320,17 @@ export function AssetsSection({
       ) : pictogramOptions.length > 0 ? (
         <div className="asset-group">
           <div className="asset-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-            <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>图像（可多选）</label>
+            <label style={{fontSize: '1rem', fontWeight: '600', color: '#666'}}>图像</label>
             <button onClick={onRegeneratePictogram} style={{fontSize: '0.875rem', padding: '2px 6px', background: '#f0f0f0', border: '1px solid #ddd', borderRadius: '4px', cursor: 'pointer'}}>重新生成</button>
           </div>
           <div className="asset-options-grid" style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px'}}>
             {pictogramOptions.map(opt => (
               <div 
                 key={opt} 
-                className={`asset-option ${selectedPictograms.includes(opt) ? 'selected' : ''}`}
-                onClick={() => {
-                  setSelectedPictograms(prev => prev.includes(opt) ? prev.filter(p => p !== opt) : [...prev, opt]);
-                }}
+                className={`asset-option ${selectedPictograms === opt ? 'selected' : ''}`}
+                onClick={() => setSelectedPictograms(opt)}
                 style={{
-                  border: selectedPictograms.includes(opt) ? '2px solid #007bff' : '1px solid #eee',
+                  border: selectedPictograms === opt ? '2px solid #007bff' : '1px solid #eee',
                   borderRadius: '4px',
                   overflow: 'hidden',
                   cursor: 'pointer',
@@ -340,13 +338,9 @@ export function AssetsSection({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: '#fff',
-                  position: 'relative'
+                  backgroundColor: '#fff'
                 }}
               >
-                {selectedPictograms.includes(opt) && (
-                  <div style={{position: 'absolute', top: '2px', right: '2px', width: '16px', height: '16px', background: '#007bff', borderRadius: '50%', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>✓</div>
-                )}
                 <img 
                   src={`/currentfilepath/${opt}?t=${previewTimestamp}`}
                   alt="Pictogram Option" 
@@ -639,7 +633,7 @@ export function Sidebar({
               />
             )}
 
-            {selectedVariation && (titleImage || selectedPictograms.length > 0 || titleLoading || pictogramLoading) && (
+            {selectedVariation && (titleImage || selectedPictograms || titleLoading || pictogramLoading) && (
               <AssetsSection
                 titleImage={titleImage}
                 setTitleImage={setTitleImage}

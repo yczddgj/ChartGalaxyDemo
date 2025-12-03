@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function CanvasControls({ canvas, hasSelection, snapshotCount, onDelete, onRedo, onDownload }) {
+export function CanvasControls({ canvas, hasSelection, snapshotCount, onDelete, onRedo, onDownload, hasReference }) {
   return (
     <div className="canvas-controls">
       <button 
@@ -23,19 +23,19 @@ export function CanvasControls({ canvas, hasSelection, snapshotCount, onDelete, 
       </button>
       <button
         onClick={onRedo}
-        disabled={snapshotCount === 0}
+        disabled={!hasReference}
         style={{
           padding: '8px 16px',
-          background: snapshotCount === 0 ? '#e0e0e0' : '#6366f1',
-          color: snapshotCount === 0 ? '#999' : 'white',
+          background: !hasReference ? '#e0e0e0' : '#6366f1',
+          color: !hasReference ? '#999' : 'white',
           border: 'none',
           borderRadius: '6px',
-          cursor: snapshotCount === 0 ? 'not-allowed' : 'pointer',
+          cursor: !hasReference ? 'not-allowed' : 'pointer',
           fontSize: '0.875rem',
           fontWeight: '600',
-          opacity: snapshotCount === 0 ? 0.5 : 1
+          opacity: !hasReference ? 0.5 : 1
         }}
-        title="重做 (最多 3 次)"
+        title="清空参考图片选择及对应结果"
       >
         🔄 重做
       </button>

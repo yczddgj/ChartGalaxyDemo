@@ -3,7 +3,7 @@ import axios from 'axios';
 
 export function useAssets(selectedFile, pollStatus, selectedVariation) {
   const [titleImage, setTitleImage] = useState('');
-  const [selectedPictograms, setSelectedPictograms] = useState([]);
+  const [selectedPictograms, setSelectedPictograms] = useState('');
   const [titleOptions, setTitleOptions] = useState([]);
   const [pictogramOptions, setPictogramOptions] = useState([]);
   const [titleLoading, setTitleLoading] = useState(false);
@@ -30,12 +30,12 @@ export function useAssets(selectedFile, pollStatus, selectedVariation) {
         }
 
         setPictogramOptions(options);
-        const newPictograms = [options[0]];
+        const newPictogram = options[0];
         
         if (currentTitleImage) {
           setTitleImage(currentTitleImage);
         }
-        setSelectedPictograms(newPictograms);
+        setSelectedPictograms(newPictogram);
         setPreviewTimestamp(Date.now());
         setPictogramLoading(false);
       }, 'pictogram_generation', true, setPictogramLoading);
@@ -107,7 +107,7 @@ export function useAssets(selectedFile, pollStatus, selectedVariation) {
         }
 
         setPictogramOptions(options);
-        setSelectedPictograms([options[0]]);
+        setSelectedPictograms(options[0]);
         setPreviewTimestamp(Date.now());
         setPictogramLoading(false);
       }, 'pictogram_generation', true, setPictogramLoading);
@@ -119,7 +119,7 @@ export function useAssets(selectedFile, pollStatus, selectedVariation) {
 
   const resetAssets = useCallback(() => {
     setTitleImage('');
-    setSelectedPictograms([]);
+    setSelectedPictograms('');
     setTitleOptions([]);
     setPictogramOptions([]);
   }, []);

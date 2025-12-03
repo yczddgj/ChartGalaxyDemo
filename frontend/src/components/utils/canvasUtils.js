@@ -193,7 +193,7 @@ export async function loadChartToCanvas({
     } else {
       const dataName = selectedFile.replace('.csv', '');
       const titlePath = titleImage ? titleImage : 'origin_images/titles/App_title.png';
-      const pictogramPath = selectedPictograms.length > 0 ? selectedPictograms[0] : 'origin_images/pictograms/App_pictogram.png';
+      const pictogramPath = selectedPictograms ? selectedPictograms : 'origin_images/pictograms/App_pictogram.png';
 
       const res = await axios.get('/authoring/chart', {
         params: { 
@@ -418,7 +418,7 @@ export async function loadChartToCanvas({
 
     // 如果需要优化且有pictogram，先进行优化计算
     let optimizedPictogramOptions = null;
-    if (shouldOptimize && selectedPictograms && selectedPictograms.length > 0) {
+    if (shouldOptimize && selectedPictograms) {
       try {
         // 开始优化，显示loading
         if (setIsOptimizing) {
@@ -482,7 +482,7 @@ export async function loadChartToCanvas({
         
         if (chartWithTitleResult) {
           const { dataUrl, bounds } = chartWithTitleResult;
-          const pName = selectedPictograms[0];
+          const pName = selectedPictograms;
           const picUrl = `/currentfilepath/${pName}?t=${Date.now()}`;
           
           // 加载pictogram图片并转换为base64
@@ -682,63 +682,57 @@ export async function loadChartToCanvas({
       }
     }
 
-    // Add or Update Pictograms (使用之前优化计算好的位置)
-    if (selectedPictograms && selectedPictograms.length > 0) {
-      console.log('[DEBUG] Adding/updating pictograms:', {
-        count: selectedPictograms.length,
+    // Add or Update Pictogram (只有一个pictogram)
+    if (selectedPictograms) {
+      console.log('[DEBUG] Adding/updating pictogram:', {
+        pictogram: selectedPictograms,
         preservePositions,
         optimizedPictogramOptions: !!optimizedPictogramOptions,
         canvasObjectCount: canvas.getObjects().length
       });
       
-      for (let i = 0; i < selectedPictograms.length; i++) {
-        const pName = selectedPictograms[i];
-        const picUrl = `/currentfilepath/${pName}?t=${Date.now()}`;
+      const pName = selectedPictograms;
+      const picUrl = `/currentfilepath/${pName}?t=${Date.now()}`;
+      
+      // 如果保留位置且canvas上已有pictogram对象，则更新它
+      const pictogramIndex = 2; // pictogram是第3个对象
+      if (preservePositions && canvas.getObjects().length > pictogramIndex) {
+        const existingPictogram = canvas.getObjects()[pictogramIndex];
+        console.log('[DEBUG] 更新现有pictogram对象');
+        try {
+          await updateImageObject(existingPictogram, picUrl);
+        } catch (error) {
+          console.error('[ERROR] 更新pictogram失败，回退到重新添加:', error);
+          // 更新失败时，移除旧对象并添加新的
+          canvas.remove(existingPictogram);
+          const currentOptions = { ...imageOptions };
+          currentOptions.maxWidth = FIXED_PICTOGRAM_SIZE;
+          currentOptions.maxHeight = FIXED_PICTOGRAM_SIZE;
+          await addImage(picUrl, currentOptions);
+        }
+      } else {
+        // 否则添加新的pictogram
+        let currentOptions;
         
-        // 如果保留位置且canvas上已有对应的pictogram对象，则更新它
-        const pictogramIndex = 2 + i; // pictogram从第3个对象开始
-        if (preservePositions && canvas.getObjects().length > pictogramIndex) {
-          const existingPictogram = canvas.getObjects()[pictogramIndex];
-          console.log('[DEBUG] 更新现有pictogram对象', i);
-          try {
-            await updateImageObject(existingPictogram, picUrl);
-          } catch (error) {
-            console.error('[ERROR] 更新pictogram失败，回退到重新添加:', error);
-            // 更新失败时，移除旧对象并添加新的
-            canvas.remove(existingPictogram);
-            const currentOptions = { ...imageOptions };
-            currentOptions.maxWidth = FIXED_PICTOGRAM_SIZE;
-            currentOptions.maxHeight = FIXED_PICTOGRAM_SIZE;
-            await addImage(picUrl, currentOptions);
-          }
+        if (preservePositions && currentPositions.pictograms[0]) {
+          // 保留之前的位置
+          currentOptions = { ...currentPositions.pictograms[0] };
+        } else if (optimizedPictogramOptions) {
+          // 使用优化后的位置
+          currentOptions = optimizedPictogramOptions;
         } else {
-          // 否则添加新的pictogram
-          let currentOptions;
-          
-          if (preservePositions && currentPositions.pictograms[i]) {
-            // 保留之前的位置
-            currentOptions = { ...currentPositions.pictograms[i] };
-          } else if (i === 0 && optimizedPictogramOptions) {
-            // 使用优化后的位置
-            currentOptions = optimizedPictogramOptions;
-          } else {
-            // 使用默认位置
-            currentOptions = { ...imageOptions };
-            currentOptions.maxWidth = FIXED_PICTOGRAM_SIZE;
-            currentOptions.maxHeight = FIXED_PICTOGRAM_SIZE;
-            if (i > 0) {
-              currentOptions.left = (currentOptions.left || 0) + i * 20;
-              currentOptions.top = (currentOptions.top || 0) + i * 20;
-            }
-          }
-          
-          console.log('[DEBUG] Adding pictogram', i, 'with options:', currentOptions);
-          try {
-            await addImage(picUrl, currentOptions);
-          } catch (error) {
-            console.error('[ERROR] Failed to add pictogram', i, ':', error);
-            throw error;
-          }
+          // 使用默认位置
+          currentOptions = { ...imageOptions };
+          currentOptions.maxWidth = FIXED_PICTOGRAM_SIZE;
+          currentOptions.maxHeight = FIXED_PICTOGRAM_SIZE;
+        }
+        
+        console.log('[DEBUG] Adding pictogram with options:', currentOptions);
+        try {
+          await addImage(picUrl, currentOptions);
+        } catch (error) {
+          console.error('[ERROR] Failed to add pictogram:', error);
+          throw error;
         }
       }
     }
